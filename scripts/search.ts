@@ -41,12 +41,12 @@ if (values.help) {
   npx tsx scripts/search.ts [オプション]
 
 オプション:
-  -r, --running-style <value>  作戦 (nige|senkou|sashi|oikomi|any)
+  -r, --running-style <value>  作戦 (nige|senkou|sashi|oikomi|none|any)
   -d, --distance <value>       距離 (short|mile|middle|long|none|any)
   -p, --phase <value>          発動タイミング (early|mid|late|corner|straight|non_late|any)
   -e, --effect <value>         効果種別 (speed|accel|stamina|position|debuff|any)
   -o, --order <value>          順位条件 (top1|top2|top4|top6|mid|back|any)
-  -g, --ground <value>         バ場 (turf|dirt|any)
+  -g, --ground <value>         バ場 (turf|dirt|none|any)
   -t, --type <value>           スキル種別 (unique|evolution|normal|any)
   -s, --sub-type <value>       スキル詳細種別 (unique|inherited_unique|gold|normal|evolution|any)
                                カンマ区切りで複数指定可: normal,unique
@@ -171,7 +171,7 @@ uniqueResults.sort((a, b) => {
 
 // 日本語変換マップ
 const runningStyleMap: Record<string, string> = {
-  nige: '逃げ', senkou: '先行', sashi: '差し', oikomi: '追込', any: '指定なし'
+  nige: '逃げ', senkou: '先行', sashi: '差し', oikomi: '追込', none: '作戦フリー', any: '指定なし'
 };
 const distanceTypeMap: Record<string, string> = {
   short: '短距離', mile: 'マイル', middle: '中距離', long: '長距離', none: '距離フリー', any: '指定なし'
@@ -188,7 +188,7 @@ const orderRangeMap: Record<string, string> = {
   top1: '1位', top2: '1〜2位', top4: '1〜4位', top6: '1〜6位',
   mid: '中団', back: '後方', any: '指定なし'
 };
-const groundTypeMap: Record<string, string> = { turf: '芝', dirt: 'ダート', any: '指定なし' };
+const groundTypeMap: Record<string, string> = { turf: '芝', dirt: 'ダート', none: 'バ場フリー', any: '指定なし' };
 const subTypeDisplayMap: Record<string, string> = {
   unique: '固有', inherited_unique: '継承固有', gold: '金', normal: '白', evolution: '進化'
 };
@@ -292,7 +292,10 @@ output('|------|------|');
 
 if (options.runningStyle) {
   const label = runningStyleMap[options.runningStyle] || options.runningStyle;
-  output(`| 作戦 | ${label}${options.runningStyle !== 'any' ? ' または 無条件' : ''} |`);
+  const suffix = options.runningStyle === 'none' ? '（作戦条件なしスキルのみ）'
+    : options.runningStyle !== 'any' ? '（作戦条件なし含む）'
+    : '';
+  output(`| 作戦 | ${label}${suffix} |`);
 }
 if (options.distanceType) {
   const label = distanceTypeMap[options.distanceType] || options.distanceType;
@@ -305,7 +308,11 @@ if (options.phase) {
   output(`| フェーズ | ${phaseMap[options.phase] || options.phase} |`);
 }
 if (options.groundType) {
-  output(`| バ場 | ${groundTypeMap[options.groundType] || options.groundType} |`);
+  const label = groundTypeMap[options.groundType] || options.groundType;
+  const suffix = options.groundType === 'none' ? '（バ場条件なしスキルのみ）'
+    : options.groundType !== 'any' ? '（バ場条件なし含む）'
+    : '';
+  output(`| バ場 | ${label}${suffix} |`);
 }
 if (options.orderRange) {
   const label = orderRangeMap[options.orderRange] || options.orderRange;

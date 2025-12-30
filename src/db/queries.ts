@@ -421,7 +421,7 @@ export function findSkillsWithDemerit(
 /**
  * 作戦タイプ
  */
-export type RunningStyle = 'nige' | 'senkou' | 'sashi' | 'oikomi' | 'any';
+export type RunningStyle = 'nige' | 'senkou' | 'sashi' | 'oikomi' | 'none' | 'any';
 
 /**
  * 距離タイプ
@@ -457,7 +457,7 @@ export type SkillSubType = SkillSubTypeValue | SkillSubTypeValue[] | 'any';
 /**
  * バ場タイプ
  */
-export type GroundType = 'turf' | 'dirt' | 'any';
+export type GroundType = 'turf' | 'dirt' | 'none' | 'any';
 
 /**
  * 高度なスキル検索オプション
@@ -515,7 +515,15 @@ export interface AdvancedSearchResult {
 function buildRunningStyleCondition(style: RunningStyle): string | null {
   if (style === 'any') return null;
 
-  const styleMap: Record<Exclude<RunningStyle, 'any'>, string> = {
+  // 作戦条件なしスキルのみ
+  if (style === 'none') {
+    return `(
+      activation_condition_raw NOT LIKE '%running_style==%'
+      OR activation_condition_raw IS NULL
+    )`;
+  }
+
+  const styleMap: Record<Exclude<RunningStyle, 'any' | 'none'>, string> = {
     nige: '1',
     senkou: '2',
     sashi: '3',
@@ -753,7 +761,15 @@ function buildOrderRangeCondition(orderRange: OrderRange): string | null {
 function buildGroundTypeCondition(groundType: GroundType): string | null {
   if (groundType === 'any') return null;
 
-  const groundMap: Record<Exclude<GroundType, 'any'>, string> = {
+  // バ場条件なしスキルのみ
+  if (groundType === 'none') {
+    return `(
+      activation_condition_raw NOT LIKE '%ground_type==%'
+      OR activation_condition_raw IS NULL
+    )`;
+  }
+
+  const groundMap: Record<Exclude<GroundType, 'any' | 'none'>, string> = {
     turf: '1',
     dirt: '2',
   };

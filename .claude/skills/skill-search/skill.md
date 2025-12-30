@@ -18,12 +18,12 @@ allowed-tools: "Read,Bash"
 
 | パラメータ | 値 | 説明 |
 |-----------|-----|------|
-| `-r, --running-style` | `nige` / `senkou` / `sashi` / `oikomi` | 作戦（指定作戦 + 条件なしスキル） |
+| `-r, --running-style` | `nige` / `senkou` / `sashi` / `oikomi` / `none` | 作戦（指定作戦 + 条件なしスキル、`none` は作戦フリーのみ） |
 | `-d, --distance` | `short` / `mile` / `middle` / `long` / `none` | 距離（指定距離 + 条件なしスキル、`none` は距離フリーのみ） |
 | `-p, --phase` | `early` / `mid` / `late` / `corner` / `straight` / `non_late` | 発動タイミング |
 | `-e, --effect` | `speed` / `accel` / `stamina` / `position` / `debuff` | 効果種別 |
 | `-o, --order` | `top1` / `top2` / `top4` / `top6` / `mid` / `back` | 順位条件（チャンミ12人換算） |
-| `-g, --ground` | `turf` / `dirt` | バ場 |
+| `-g, --ground` | `turf` / `dirt` / `none` | バ場（指定バ場 + 条件なしスキル、`none` はバ場フリーのみ） |
 | `-t, --type` | `unique` / `evolution` / `normal` | スキル種別 |
 | `-s, --sub-type` | `unique` / `inherited_unique` / `gold` / `normal` / `evolution` | スキル詳細種別（カンマ区切り可） |
 | `-n, --name` | 文字列 | スキル名（部分一致） |
@@ -104,6 +104,7 @@ npx tsx scripts/search.ts [オプション] -O docs/skill-search.md
 | 先行用 | `-r senkou` |
 | 差し用 | `-r sashi` |
 | 追込用 | `-r oikomi` |
+| 作戦を問わない / 作戦フリー | `-r none` |
 | 短距離 | `-d short` |
 | マイル | `-d mile` |
 | 中距離 | `-d middle` |
@@ -119,6 +120,7 @@ npx tsx scripts/search.ts [オプション] -O docs/skill-search.md
 | 加速 | `-e accel` |
 | 芝 | `-g turf` |
 | ダート | `-g dirt` |
+| バ場を問わない / バ場フリー | `-g none` |
 | 1位 | `-o top1` |
 | 1〜2位 | `-o top2` |
 | 1〜4位 | `-o top4` |
