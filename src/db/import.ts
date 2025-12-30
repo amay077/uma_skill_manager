@@ -178,6 +178,26 @@ function importEffectParameters(
 }
 
 /**
+ * 継承固有スキルの事後修正
+ * 同名の固有スキル（評価点 >= 300）が存在する normal スキルを inherited_unique に修正
+ * @param db Database インスタンス
+ * @returns 修正した件数
+ */
+function fixInheritedUniqueSkills(db: Database.Database): number {
+  const result = db.prepare(`
+    UPDATE skills
+    SET type = 'unique', sub_type = 'inherited_unique'
+    WHERE type = 'normal'
+      AND name IN (
+        SELECT name FROM skills
+        WHERE type = 'unique' AND evaluation_point >= 300
+      )
+  `).run();
+
+  return result.changes;
+}
+
+/**
  * 効果バリアントをインポート
  * @param db Database インスタンス
  * @param skills スキル配列
@@ -244,6 +264,8 @@ export interface ImportResult {
   variantCount: number;
   /** インポートしたバリアントパラメータ数 */
   variantParameterCount: number;
+  /** 継承固有スキルとして修正した件数 */
+  inheritedUniqueFixedCount: number;
 }
 
 /**
@@ -271,6 +293,9 @@ export function importToDatabase(
       importEffectParameters(db, skills, skillIdMap);
       importEffectVariants(db, skills, skillIdMap);
 
+      // 継承固有スキルの事後修正
+      const inheritedUniqueFixedCount = fixInheritedUniqueSkills(db);
+
       // 件数を取得
       const supportCardCount = db.prepare('SELECT COUNT(*) as count FROM support_cards').get() as { count: number };
       const skillCount = db.prepare('SELECT COUNT(*) as count FROM skills').get() as { count: number };
@@ -286,6 +311,7 @@ export function importToDatabase(
         parameterCount: parameterCount.count,
         variantCount: variantCount.count,
         variantParameterCount: variantParameterCount.count,
+        inheritedUniqueFixedCount,
       };
     })();
 
@@ -316,6 +342,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log(`  効果パラメータ: ${result.parameterCount} 件`);
     console.log(`  効果バリアント: ${result.variantCount} 件`);
     console.log(`  バリアントパラメータ: ${result.variantParameterCount} 件`);
+    console.log(`  継承固有スキル修正: ${result.inheritedUniqueFixedCount} 件`);
   } catch (error) {
     console.error('エラー:', error instanceof Error ? error.message : error);
     process.exit(1);
