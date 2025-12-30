@@ -18,16 +18,19 @@ allowed-tools: "Read,Bash"
 
 | パラメータ | 値 | 説明 |
 |-----------|-----|------|
-| `--running-style` | `nige` / `senkou` / `sashi` / `oikomi` | 作戦（指定作戦 + 条件なしスキル） |
-| `--distance` | `short` / `mile` / `middle` / `long` | 距離（指定距離 + 条件なしスキル） |
-| `--phase` | `early` / `mid` / `late` / `corner` / `straight` / `non_late` | 発動タイミング |
-| `--effect` | `speed` / `accel` / `stamina` / `position` / `debuff` | 効果種別 |
-| `--order` | `top1` / `top2` / `top4` / `top6` / `mid` / `back` | 順位条件（チャンミ12人換算） |
-| `--ground` | `turf` / `dirt` | バ場 |
-| `--type` | `unique` / `evolution` / `normal` | スキル種別 |
-| `--name` | 文字列 | スキル名（部分一致） |
+| `-r, --running-style` | `nige` / `senkou` / `sashi` / `oikomi` | 作戦（指定作戦 + 条件なしスキル） |
+| `-d, --distance` | `short` / `mile` / `middle` / `long` | 距離（指定距離 + 条件なしスキル） |
+| `-p, --phase` | `early` / `mid` / `late` / `corner` / `straight` / `non_late` | 発動タイミング |
+| `-e, --effect` | `speed` / `accel` / `stamina` / `position` / `debuff` | 効果種別 |
+| `-o, --order` | `top1` / `top2` / `top4` / `top6` / `mid` / `back` | 順位条件（チャンミ12人換算） |
+| `-g, --ground` | `turf` / `dirt` | バ場 |
+| `-t, --type` | `unique` / `evolution` / `normal` | スキル種別 |
+| `-s, --sub-type` | `unique` / `inherited_unique` / `gold` / `normal` / `evolution` | スキル詳細種別（カンマ区切り可） |
+| `-n, --name` | 文字列 | スキル名（部分一致） |
 | `--exclude-demerit` | - | デメリットスキルを除外 |
-| `--limit` | 数値 | 結果件数の上限（デフォルト: 50） |
+| `-l, --limit` | 数値 | 結果件数の上限（デフォルト: 200） |
+| `-f, --format` | `table` / `json` / `simple` | 出力形式（デフォルト: table） |
+| `--sort` | `effect` / `eval` / `name` | ソート順（デフォルト: effect=速度×持続） |
 
 ## 順位条件の換算
 
@@ -46,26 +49,38 @@ allowed-tools: "Read,Bash"
 
 ### 逃げ用・終盤以外・速度スキル（チャンミ4位以内）
 
+```bash
+npx tsx scripts/search.ts -r nige -p non_late -e speed -o top4
 ```
-/skill-search --running-style nige --phase non_late --effect speed --order top4
+
+### 白スキル＋固有スキルを検索
+
+```bash
+npx tsx scripts/search.ts -s normal,unique --exclude-demerit
 ```
 
 ### コーナースキルを検索
 
-```
-/skill-search --phase corner --effect speed
-```
-
-### 固有スキルのみ
-
-```
-/skill-search --type unique --limit 20
+```bash
+npx tsx scripts/search.ts -p corner -e speed
 ```
 
 ### 名前で検索
 
+```bash
+npx tsx scripts/search.ts -n コーナー
 ```
-/skill-search --name コーナー
+
+### JSON形式で出力
+
+```bash
+npx tsx scripts/search.ts -r nige -f json
+```
+
+### シンプル形式で出力
+
+```bash
+npx tsx scripts/search.ts -r nige -f simple
 ```
 
 ## 実装
@@ -73,114 +88,46 @@ allowed-tools: "Read,Bash"
 検索を実行するには、以下のコマンドを実行:
 
 ```bash
-npx tsx -e "
-import { advancedSearch } from './src/db/index.js';
-
-// 検索オプション
-const options = {
-  runningStyle: 'nige',      // 作戦
-  distanceType: 'any',       // 距離
-  phase: 'non_late',         // 発動タイミング
-  effectType: 'speed',       // 効果種別
-  orderRange: 'top4',        // 順位条件
-  groundType: 'turf',        // バ場
-  skillType: 'any',          // スキル種別（大分類）
-  skillSubType: 'normal',    // スキル詳細種別（小分類）
-  excludeDemerit: true,      // デメリット除外
-  limit: 200,                // 上限
-};
-
-const results = advancedSearch(options);
-
-// 日本語変換マップ
-const runningStyleMap = { nige: '逃げ', senkou: '先行', sashi: '差し', oikomi: '追込', any: '指定なし' };
-const distanceTypeMap = { short: '短距離', mile: 'マイル', middle: '中距離', long: '長距離', any: '指定なし' };
-const phaseMap = { early: '序盤', mid: '中盤', late: '終盤', corner: 'コーナー', straight: '直線', non_late: '終盤以外', any: '指定なし' };
-const effectTypeMap = { speed: '速度', accel: '加速', stamina: 'スタミナ', position: '位置取り', debuff: 'デバフ', any: '指定なし' };
-const orderRangeMap = { top1: '1 位', top2: '1〜2 位', top4: '1〜4 位', top6: '1〜6 位', mid: '中団', back: '後方', any: '指定なし' };
-const groundTypeMap = { turf: '芝', dirt: 'ダート', any: '指定なし' };
-const skillTypeMap = { unique: '固有スキルのみ', evolution: '進化スキルのみ', normal: '通常スキルのみ', any: '指定なし' };
-const skillSubTypeMap = { unique: '固有のみ', inherited_unique: '継承固有のみ', gold: '金スキルのみ', normal: '白スキルのみ', evolution: '進化のみ', any: '指定なし' };
-const subTypeDisplayMap = { unique: '固有', inherited_unique: '継承固有', gold: '金', normal: '白', evolution: '進化' };
-
-// effect_params をパースして値を抽出
-function parseEffectParams(params) {
-  if (!params) return { speed: '-', accel: '-', heal: '-', duration: '-' };
-  const map = {};
-  params.split(', ').forEach(p => {
-    const [key, val] = p.split(':');
-    map[key] = Number(val);
-  });
-  return {
-    speed: map.targetSpeed || map.currentSpeed || '-',
-    accel: map.targetAccel || map.currentAccel || '-',
-    heal: map.heal || '-',
-    duration: map.duration || '-',
-  };
-}
-
-// 順位条件を抽出
-function extractOrderCondition(raw) {
-  if (!raw) return '-';
-  const orderMatch = raw.match(/order(?:_rate)?[<>=]+\\d+/g);
-  if (!orderMatch) return '-';
-  // 簡易変換
-  const conds = orderMatch.map(m => {
-    if (m.includes('order_rate')) {
-      const val = m.match(/\\d+/)?.[0];
-      if (m.includes('<=')) return \`チャンミ〜\${Math.ceil(Number(val) / 100 * 12)}/LoH〜\${Math.ceil(Number(val) / 100 * 15)}\`;
-      if (m.includes('>=')) return \`チャンミ\${Math.ceil(Number(val) / 100 * 12)}〜/LoH\${Math.ceil(Number(val) / 100 * 15)}〜\`;
-    }
-    if (m.includes('order==')) return \`順位==\${m.match(/\\d+/)?.[0]}\`;
-    if (m.includes('order>=')) return \`順位>=\${m.match(/\\d+/)?.[0]}\`;
-    if (m.includes('order<=')) return \`順位<=\${m.match(/\\d+/)?.[0]}\`;
-    return m;
-  });
-  return conds.join(', ');
-}
-
-// 検索条件を出力
-console.log('# スキル検索結果');
-console.log('');
-console.log('## 検索条件');
-console.log('');
-console.log('| 項目 | 条件 |');
-console.log('|------|------|');
-console.log(\`| 作戦 | \${runningStyleMap[options.runningStyle] || options.runningStyle}\${options.runningStyle !== 'any' ? ' または 無条件' : ''} |\`);
-console.log(\`| 距離 | \${distanceTypeMap[options.distanceType] || options.distanceType}\${options.distanceType !== 'any' ? '（スキル自体に距離制限がないもの）' : ''} |\`);
-console.log(\`| フェーズ | \${phaseMap[options.phase] || options.phase} |\`);
-console.log(\`| バ場 | \${groundTypeMap[options.groundType] || options.groundType} |\`);
-console.log(\`| 順位条件 | \${orderRangeMap[options.orderRange] || options.orderRange}\${options.orderRange !== 'any' ? '（チャンミ換算）' : ''} |\`);
-console.log(\`| スキル種別 | \${skillSubTypeMap[options.skillSubType] || skillTypeMap[options.skillType] || '指定なし'} |\`);
-console.log(\`| 効果種別 | \${effectTypeMap[options.effectType] || options.effectType}\${options.effectType !== 'any' ? 'スキルのみ' : ''} |\`);
-console.log('');
-console.log(\`**該当件数: \${results.length} 件**\`);
-console.log('');
-console.log('---');
-console.log('');
-console.log('## 検索結果');
-console.log('');
-console.log('| No | スキル名 | 種別 | 順位条件 | その他発動条件 | 速度 | 加速 | 回復 | 持続 | 評価点 |');
-console.log('|---:|----------|------|----------|----------------|-----:|-----:|-----:|-----:|-------:|');
-
-// 重複排除（skill_id でユニーク化）
-const seen = new Set();
-let no = 0;
-for (const r of results) {
-  if (seen.has(r.skill_id)) continue;
-  seen.add(r.skill_id);
-  no++;
-  const ep = parseEffectParams(r.effect_params);
-  const orderCond = extractOrderCondition(r.activation_condition_raw);
-  const otherCond = r.activation_condition_description || '-';
-  const subType = subTypeDisplayMap[r.skill_sub_type] || r.skill_sub_type;
-  console.log(\`| \${no} | \${r.skill_name} | \${subType} | \${orderCond} | \${otherCond} | \${ep.speed} | \${ep.accel} | \${ep.heal} | \${ep.duration} | \${r.evaluation_point} |\`);
-}
-"
+npx tsx scripts/search.ts [オプション]
 ```
+
+ユーザーからの検索依頼を受けたら、上記コマンドに適切なオプションを付けて実行する。
+
+### オプション対応表
+
+| ユーザー指示 | オプション |
+|-------------|-----------|
+| 逃げ用 | `-r nige` |
+| 先行用 | `-r senkou` |
+| 差し用 | `-r sashi` |
+| 追込用 | `-r oikomi` |
+| 短距離 | `-d short` |
+| マイル | `-d mile` |
+| 中距離 | `-d middle` |
+| 長距離 | `-d long` |
+| 序盤 | `-p early` |
+| 中盤 | `-p mid` |
+| 終盤 | `-p late` |
+| 終盤以外 | `-p non_late` |
+| コーナー | `-p corner` |
+| 直線 | `-p straight` |
+| 速度 | `-e speed` |
+| 加速 | `-e accel` |
+| 芝 | `-g turf` |
+| ダート | `-g dirt` |
+| 1位 | `-o top1` |
+| 1〜2位 | `-o top2` |
+| 1〜4位 | `-o top4` |
+| 1〜6位 | `-o top6` |
+| 白スキル | `-s normal` |
+| 固有スキル | `-s unique` |
+| 金スキル | `-s gold` |
+| 白＋固有 | `-s normal,unique` |
+| デメリット除外 | `--exclude-demerit` |
 
 ## 注意事項
 
 - 各パラメータで値を指定すると、**その条件に一致 + 条件指定なし** のスキルが返される
-- 例: `--running-style nige` → 逃げ専用スキル + 全作戦対応スキル
+- 例: `-r nige` → 逃げ専用スキル + 全作戦対応スキル
 - `phase: non_late` は「終盤条件を含まない」スキルを返す（序盤/中盤限定ではない）
+- ソートはデフォルトで「速度×持続」の降順（効果の高い順）
