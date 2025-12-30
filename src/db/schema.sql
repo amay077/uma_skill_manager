@@ -59,6 +59,8 @@ CREATE TABLE IF NOT EXISTS skill_effect_variants (
   activation_condition_description TEXT,
   effect_order INTEGER NOT NULL DEFAULT 0,
   is_demerit INTEGER NOT NULL DEFAULT 0,
+  order_min INTEGER,  -- 順位下限（9人立て換算: order>=N または order_rate>=N%）
+  order_max INTEGER,  -- 順位上限（9人立て換算: order<=N または order_rate<=N%）
   FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE
 );
 
@@ -82,6 +84,8 @@ CREATE INDEX IF NOT EXISTS idx_effect_parameters_skill_id ON effect_parameters(s
 CREATE INDEX IF NOT EXISTS idx_effect_parameters_key ON effect_parameters(parameter_key);
 CREATE INDEX IF NOT EXISTS idx_skill_effect_variants_skill_id ON skill_effect_variants(skill_id);
 CREATE INDEX IF NOT EXISTS idx_skill_effect_variants_effect_order ON skill_effect_variants(effect_order);
+CREATE INDEX IF NOT EXISTS idx_skill_effect_variants_order_min ON skill_effect_variants(order_min);
+CREATE INDEX IF NOT EXISTS idx_skill_effect_variants_order_max ON skill_effect_variants(order_max);
 CREATE INDEX IF NOT EXISTS idx_variant_parameters_variant_id ON variant_parameters(variant_id);
 
 -- VIEW: スキル+サポカ+効果パラメータの結合ビュー

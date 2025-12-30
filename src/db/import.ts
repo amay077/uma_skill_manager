@@ -198,6 +198,103 @@ function fixInheritedUniqueSkills(db: Database.Database): number {
 }
 
 /**
+ * 順位条件をパース（9人立て換算）
+ * activation_condition_raw から order/order_rate 条件を抽出し、
+ * 9人立てのチャンミ換算で order_min/order_max を返す
+ * @param conditionRaw activation_condition_raw の値
+ * @returns { orderMin, orderMax } - 9人立て換算の順位下限/上限
+ */
+function parseOrderConditions(conditionRaw: string | null): {
+  orderMin: number | null;
+  orderMax: number | null;
+} {
+  if (!conditionRaw) return { orderMin: null, orderMax: null };
+
+  let orderMin: number | null = null;
+  let orderMax: number | null = null;
+
+  // order==N パターン（N位限定で発動）
+  const orderEqMatch = conditionRaw.match(/order==(\d+)/);
+  if (orderEqMatch) {
+    const val = parseInt(orderEqMatch[1], 10);
+    // N位限定 = order_min も order_max も N
+    orderMin = orderMin === null ? val : Math.max(orderMin, val);
+    orderMax = orderMax === null ? val : Math.min(orderMax, val);
+  }
+
+  // order>=N パターン（N位以降で発動）
+  const orderGteMatch = conditionRaw.match(/order>=(\d+)/);
+  if (orderGteMatch) {
+    const val = parseInt(orderGteMatch[1], 10);
+    orderMin = orderMin === null ? val : Math.max(orderMin, val);
+  }
+
+  // order<=N パターン（N位以内で発動）
+  const orderLteMatch = conditionRaw.match(/order<=(\d+)/);
+  if (orderLteMatch) {
+    const val = parseInt(orderLteMatch[1], 10);
+    orderMax = orderMax === null ? val : Math.min(orderMax, val);
+  }
+
+  // order_rate>=N パターン → 9人立て換算（N%以降で発動）
+  const orderRateGteMatch = conditionRaw.match(/order_rate>=(\d+)/);
+  if (orderRateGteMatch) {
+    const rate = parseInt(orderRateGteMatch[1], 10);
+    const converted = Math.ceil(rate / 100 * 9);
+    orderMin = orderMin === null ? converted : Math.max(orderMin, converted);
+  }
+
+  // order_rate<=N パターン → 9人立て換算（N%以内で発動）
+  const orderRateLteMatch = conditionRaw.match(/order_rate<=(\d+)/);
+  if (orderRateLteMatch) {
+    const rate = parseInt(orderRateLteMatch[1], 10);
+    const converted = Math.ceil(rate / 100 * 9);
+    orderMax = orderMax === null ? converted : Math.min(orderMax, converted);
+  }
+
+  // order_rate>N パターン → 9人立て換算（N%超過で発動）
+  // ">=" ではなく ">" のみを検出するため、否定先読みを使用
+  const orderRateGtMatch = conditionRaw.match(/order_rate>(\d+)(?!=)/);
+  if (orderRateGtMatch) {
+    const rate = parseInt(orderRateGtMatch[1], 10);
+    // N%超過 = (N+1)%以上と同等
+    const converted = Math.ceil((rate + 1) / 100 * 9);
+    orderMin = orderMin === null ? converted : Math.max(orderMin, converted);
+  }
+
+  // order_rate_inN_continue パターン → 上位N%維持で発動
+  const orderRateInMatch = conditionRaw.match(/order_rate_in(\d+)_continue/);
+  if (orderRateInMatch) {
+    const rate = parseInt(orderRateInMatch[1], 10);
+    const converted = Math.ceil(rate / 100 * 9);
+    orderMax = orderMax === null ? converted : Math.min(orderMax, converted);
+  }
+
+  return { orderMin, orderMax };
+}
+
+/**
+ * 固有スキルの順位条件をデフォルト設定
+ * 順位条件がない固有スキルには order_min=1, order_max=9 を設定
+ * @param subType スキルのサブタイプ
+ * @param orderMin パース結果のorder_min
+ * @param orderMax パース結果のorder_max
+ * @returns デフォルト適用後の順位条件
+ */
+function applyDefaultOrderForUnique(
+  subType: string,
+  orderMin: number | null,
+  orderMax: number | null
+): { orderMin: number | null; orderMax: number | null } {
+  // 固有スキルまたは継承固有スキルの場合、順位条件がなければデフォルトを設定
+  if ((subType === 'unique' || subType === 'inherited_unique') &&
+      orderMin === null && orderMax === null) {
+    return { orderMin: 1, orderMax: 9 };
+  }
+  return { orderMin, orderMax };
+}
+
+/**
  * 効果バリアントをインポート
  * @param db Database インスタンス
  * @param skills スキル配列
@@ -211,8 +308,8 @@ function importEffectVariants(
   const insertVariantStmt = db.prepare(`
     INSERT INTO skill_effect_variants (
       skill_id, variant_index, trigger_condition_raw, activation_condition_raw,
-      activation_condition_description, effect_order, is_demerit
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      activation_condition_description, effect_order, is_demerit, order_min, order_max
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertParamStmt = db.prepare(`
@@ -226,6 +323,15 @@ function importEffectVariants(
     if (!skillId || !skill.effectVariants) continue;
 
     for (const variant of skill.effectVariants) {
+      // 順位条件をパース（9人立て換算）
+      const parsed = parseOrderConditions(variant.activationConditionRaw ?? null);
+      // 固有スキルには順位条件のデフォルトを適用
+      const { orderMin, orderMax } = applyDefaultOrderForUnique(
+        skill.subType,
+        parsed.orderMin,
+        parsed.orderMax
+      );
+
       const result = insertVariantStmt.run(
         skillId,
         variant.variantIndex,
@@ -233,7 +339,9 @@ function importEffectVariants(
         variant.activationConditionRaw ?? null,
         variant.activationConditionDescription ?? null,
         variant.effectOrder,
-        variant.isDemerit ? 1 : 0
+        variant.isDemerit ? 1 : 0,
+        orderMin,
+        orderMax
       );
 
       const variantId = result.lastInsertRowid as number;
@@ -295,6 +403,17 @@ export function importToDatabase(
 
       // 継承固有スキルの事後修正
       const inheritedUniqueFixedCount = fixInheritedUniqueSkills(db);
+
+      // 継承固有スキルのバリアントに順位条件のデフォルトを設定
+      db.prepare(`
+        UPDATE skill_effect_variants
+        SET order_min = 1, order_max = 9
+        WHERE skill_id IN (
+          SELECT id FROM skills WHERE sub_type = 'inherited_unique'
+        )
+        AND order_min IS NULL
+        AND order_max IS NULL
+      `).run();
 
       // 件数を取得
       const supportCardCount = db.prepare('SELECT COUNT(*) as count FROM support_cards').get() as { count: number };
