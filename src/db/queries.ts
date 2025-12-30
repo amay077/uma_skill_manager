@@ -426,7 +426,7 @@ export type RunningStyle = 'nige' | 'senkou' | 'sashi' | 'oikomi' | 'any';
 /**
  * 距離タイプ
  */
-export type DistanceType = 'short' | 'mile' | 'middle' | 'long' | 'any';
+export type DistanceType = 'short' | 'mile' | 'middle' | 'long' | 'none' | 'any';
 
 /**
  * 発動フェーズ
@@ -537,7 +537,15 @@ function buildRunningStyleCondition(style: RunningStyle): string | null {
 function buildDistanceTypeCondition(dist: DistanceType): string | null {
   if (dist === 'any') return null;
 
-  const distMap: Record<Exclude<DistanceType, 'any'>, string> = {
+  // 距離条件なしスキルのみ
+  if (dist === 'none') {
+    return `(
+      activation_condition_raw NOT LIKE '%distance_type==%'
+      OR activation_condition_raw IS NULL
+    )`;
+  }
+
+  const distMap: Record<Exclude<DistanceType, 'any' | 'none'>, string> = {
     short: '1',
     mile: '2',
     middle: '3',
@@ -637,13 +645,10 @@ function buildEffectTypeCondition(effectType: EffectType): string | null {
       )`;
 
     case 'accel':
-      return `(
-        effect_params LIKE '%targetAccel%'
-        OR effect_params LIKE '%currentAccel%'
-      )`;
+      return `effect_params LIKE '%acceleration%'`;
 
     case 'stamina':
-      return `effect_params LIKE '%heal%'`;
+      return `effect_params LIKE '%hpRecovery%'`;
 
     case 'position':
       return `(

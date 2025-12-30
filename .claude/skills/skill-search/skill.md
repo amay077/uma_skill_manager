@@ -19,7 +19,7 @@ allowed-tools: "Read,Bash"
 | パラメータ | 値 | 説明 |
 |-----------|-----|------|
 | `-r, --running-style` | `nige` / `senkou` / `sashi` / `oikomi` | 作戦（指定作戦 + 条件なしスキル） |
-| `-d, --distance` | `short` / `mile` / `middle` / `long` | 距離（指定距離 + 条件なしスキル） |
+| `-d, --distance` | `short` / `mile` / `middle` / `long` / `none` | 距離（指定距離 + 条件なしスキル、`none` は距離フリーのみ） |
 | `-p, --phase` | `early` / `mid` / `late` / `corner` / `straight` / `non_late` | 発動タイミング |
 | `-e, --effect` | `speed` / `accel` / `stamina` / `position` / `debuff` | 効果種別 |
 | `-o, --order` | `top1` / `top2` / `top4` / `top6` / `mid` / `back` | 順位条件（チャンミ12人換算） |
@@ -88,10 +88,13 @@ npx tsx scripts/search.ts -r nige -f simple
 検索を実行するには、以下のコマンドを実行:
 
 ```bash
-npx tsx scripts/search.ts [オプション]
+npx tsx scripts/search.ts [オプション] -O docs/skill-search.md
 ```
 
 ユーザーからの検索依頼を受けたら、上記コマンドに適切なオプションを付けて実行する。
+
+**重要**: 検索結果は必ず `-O docs/skill-search.md` オプションを付けてファイルに保存すること。
+出力ファイルは `docs/skill-search-YYYYMMDDHHmm.md` の形式でタイムスタンプ付きで保存される。
 
 ### オプション対応表
 
@@ -105,6 +108,7 @@ npx tsx scripts/search.ts [オプション]
 | マイル | `-d mile` |
 | 中距離 | `-d middle` |
 | 長距離 | `-d long` |
+| 距離を問わない / 距離フリー | `-d none` |
 | 序盤 | `-p early` |
 | 中盤 | `-p mid` |
 | 終盤 | `-p late` |
@@ -131,3 +135,4 @@ npx tsx scripts/search.ts [オプション]
 - 例: `-r nige` → 逃げ専用スキル + 全作戦対応スキル
 - `phase: non_late` は「終盤条件を含まない」スキルを返す（序盤/中盤限定ではない）
 - ソートはデフォルトで「速度×持続」の降順（効果の高い順）
+- 加速スキル検索（`-e accel`）では「加速×持続」の降順でソートされる

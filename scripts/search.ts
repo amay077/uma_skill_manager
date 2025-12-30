@@ -42,7 +42,7 @@ if (values.help) {
 
 オプション:
   -r, --running-style <value>  作戦 (nige|senkou|sashi|oikomi|any)
-  -d, --distance <value>       距離 (short|mile|middle|long|any)
+  -d, --distance <value>       距離 (short|mile|middle|long|none|any)
   -p, --phase <value>          発動タイミング (early|mid|late|corner|straight|non_late|any)
   -e, --effect <value>         効果種別 (speed|accel|stamina|position|debuff|any)
   -o, --order <value>          順位条件 (top1|top2|top4|top6|mid|back|any)
@@ -140,8 +140,8 @@ function parseEffectParams(params: string | null): {
   });
   return {
     speed: map.targetSpeed ?? map.currentSpeed ?? null,
-    accel: map.targetAccel ?? map.currentAccel ?? null,
-    heal: map.heal ?? null,
+    accel: map.acceleration ?? null,
+    heal: map.hpRecovery ?? null,
     duration: map.duration ?? null,
   };
 }
@@ -152,8 +152,12 @@ uniqueResults.sort((a, b) => {
   if (sortBy === 'effect') {
     const epA = parseEffectParams(a.effect_params);
     const epB = parseEffectParams(b.effect_params);
-    const scoreA = (epA.speed ?? 0) * (epA.duration ?? 0);
-    const scoreB = (epB.speed ?? 0) * (epB.duration ?? 0);
+    // 加速スキルのみ指定時は加速×持続、それ以外は速度×持続
+    const useAccel = options.effectType === 'accel';
+    const valueA = useAccel ? (epA.accel ?? 0) : (epA.speed ?? 0);
+    const valueB = useAccel ? (epB.accel ?? 0) : (epB.speed ?? 0);
+    const scoreA = valueA * (epA.duration ?? 0);
+    const scoreB = valueB * (epB.duration ?? 0);
     return scoreB - scoreA;
   }
   if (sortBy === 'eval') {
@@ -170,7 +174,7 @@ const runningStyleMap: Record<string, string> = {
   nige: '逃げ', senkou: '先行', sashi: '差し', oikomi: '追込', any: '指定なし'
 };
 const distanceTypeMap: Record<string, string> = {
-  short: '短距離', mile: 'マイル', middle: '中距離', long: '長距離', any: '指定なし'
+  short: '短距離', mile: 'マイル', middle: '中距離', long: '長距離', none: '距離フリー', any: '指定なし'
 };
 const phaseMap: Record<string, string> = {
   early: '序盤', mid: '中盤', late: '終盤', corner: 'コーナー',
@@ -292,7 +296,10 @@ if (options.runningStyle) {
 }
 if (options.distanceType) {
   const label = distanceTypeMap[options.distanceType] || options.distanceType;
-  output(`| 距離 | ${label}${options.distanceType !== 'any' ? '（スキル自体に距離制限がないもの）' : ''} |`);
+  const suffix = options.distanceType === 'none' ? '（距離条件なしスキルのみ）'
+    : options.distanceType !== 'any' ? '（距離条件なし含む）'
+    : '';
+  output(`| 距離 | ${label}${suffix} |`);
 }
 if (options.phase) {
   output(`| フェーズ | ${phaseMap[options.phase] || options.phase} |`);
