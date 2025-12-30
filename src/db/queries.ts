@@ -451,7 +451,8 @@ export type SkillType = 'unique' | 'evolution' | 'normal' | 'any';
 /**
  * スキル詳細タイプ（小分類）
  */
-export type SkillSubType = 'unique' | 'inherited_unique' | 'gold' | 'normal' | 'evolution' | 'any';
+export type SkillSubTypeValue = 'unique' | 'inherited_unique' | 'gold' | 'normal' | 'evolution';
+export type SkillSubType = SkillSubTypeValue | SkillSubTypeValue[] | 'any';
 
 /**
  * バ場タイプ
@@ -789,10 +790,14 @@ export function advancedSearch(
       params.push(options.skillType);
     }
 
-    // スキル詳細タイプ（小分類）
+    // スキル詳細タイプ（小分類）- 配列対応
     if (options.skillSubType && options.skillSubType !== 'any') {
-      conditions.push('s.sub_type = ?');
-      params.push(options.skillSubType);
+      const subTypes = Array.isArray(options.skillSubType)
+        ? options.skillSubType
+        : [options.skillSubType];
+      const placeholders = subTypes.map(() => '?').join(', ');
+      conditions.push(`s.sub_type IN (${placeholders})`);
+      params.push(...subTypes);
     }
 
     // デメリット除外

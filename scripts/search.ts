@@ -1,11 +1,13 @@
 import { advancedSearch } from '../src/db/queries.js';
 
+// デフォルト: 通常スキル(normal)と固有スキル(unique)を対象
+// gold(金), inherited_unique(継承固有), evolution(進化)は除外
 const results = advancedSearch({
   runningStyle: 'nige',
   phase: 'non_late',
   effectType: 'speed',
   orderRange: 'top4',
-  skillType: 'normal',
+  skillSubType: ['normal', 'unique'],
   excludeDemerit: true,
   limit: 500,
 });
@@ -24,7 +26,7 @@ const filtered = results.filter(r => {
 });
 
 for (const r of filtered) {
-  console.log(`${r.skill_name} (${r.skill_type}, ${r.evaluation_point}pt)`);
+  console.log(`${r.skill_name} (${r.skill_sub_type}, ${r.evaluation_point}pt)`);
   console.log(`  条件: ${(r.activation_condition_description || r.activation_condition_raw || '').slice(0, 60)}`);
   console.log(`  効果: ${(r.effect_params || '').slice(0, 60)}`);
   console.log('');
