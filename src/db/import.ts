@@ -290,7 +290,7 @@ function parseGroundFlags(conditionRaw: string | null): string {
   if (!conditionRaw) return '11';
 
   const flags = ['0', '0'];
-  const matches = conditionRaw.matchAll(/ground==(\d)/g);
+  const matches = conditionRaw.matchAll(/ground_type==(\d)/g);
   for (const match of matches) {
     const ground = parseInt(match[1], 10);
     if (ground >= 1 && ground <= 2) {
