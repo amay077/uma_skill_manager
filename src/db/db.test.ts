@@ -15,6 +15,10 @@ import {
   getSkillsBySupportCard,
   getStatistics,
   loadSkillsFromJson,
+  searchVariants,
+  findMultiStageSkills,
+  findSkillsWithDemerit,
+  advancedSearch,
   DEFAULT_JSON_PATH,
 } from './index.js';
 
@@ -56,8 +60,10 @@ describe('Database', () => {
       expect(tables.map(t => t.name)).toEqual([
         'effect_parameters',
         'skill_conditions',
+        'skill_effect_variants',
         'skills',
         'support_cards',
+        'variant_parameters',
       ]);
 
       closeDatabase(db);
@@ -75,6 +81,7 @@ describe('Database', () => {
       expect(views.map(v => v.name)).toEqual([
         'condition_search_view',
         'skill_full_view',
+        'skill_variants_view',
         'support_card_skills_view',
       ]);
 
@@ -125,6 +132,8 @@ describe('Database', () => {
       expect(result.supportCardCount).toBeGreaterThan(0);
       expect(result.conditionCount).toBeGreaterThan(0);
       expect(result.parameterCount).toBeGreaterThan(0);
+      expect(result.variantCount).toBeGreaterThanOrEqual(0);
+      expect(result.variantParameterCount).toBeGreaterThanOrEqual(0);
     });
 
     it('should clear existing data on reimport', () => {
@@ -216,6 +225,156 @@ describe('Database', () => {
         expect(stats.totalSupportCards).toBeGreaterThan(0);
         expect(stats.skillsByType.length).toBeGreaterThan(0);
         expect(stats.avgEvaluationPoint).toBeGreaterThan(0);
+        expect(typeof stats.totalVariants).toBe('number');
+        expect(typeof stats.multiStageSkillCount).toBe('number');
+        expect(typeof stats.demeritVariantCount).toBe('number');
+      });
+    });
+
+    describe('searchVariants', () => {
+      it('should search all variants', () => {
+        const results = searchVariants({}, TEST_DB_PATH);
+        expect(results).toBeInstanceOf(Array);
+      });
+
+      it('should filter by skill name', () => {
+        const results = searchVariants({ name: '波乱' }, TEST_DB_PATH);
+        results.forEach(r => expect(r.skill_name).toContain('波乱'));
+      });
+
+      it('should filter by skill type', () => {
+        const results = searchVariants({ type: 'unique' }, TEST_DB_PATH);
+        results.forEach(r => expect(r.skill_type).toBe('unique'));
+      });
+
+      it('should exclude demerit effects', () => {
+        const results = searchVariants({ excludeDemerit: true }, TEST_DB_PATH);
+        results.forEach(r => expect(r.is_demerit).toBe(0));
+      });
+
+      it('should filter by effect order', () => {
+        const results = searchVariants({ effectOrder: 0 }, TEST_DB_PATH);
+        results.forEach(r => expect(r.effect_order).toBe(0));
+      });
+    });
+
+    describe('findMultiStageSkills', () => {
+      it('should find skills with multi-stage activation', () => {
+        const results = findMultiStageSkills(TEST_DB_PATH);
+        expect(results).toBeInstanceOf(Array);
+        results.forEach(r => {
+          expect(r.max_effect_order).toBeGreaterThanOrEqual(1);
+        });
+      });
+    });
+
+    describe('findSkillsWithDemerit', () => {
+      it('should find variants with demerit effects', () => {
+        const results = findSkillsWithDemerit(TEST_DB_PATH);
+        expect(results).toBeInstanceOf(Array);
+        results.forEach(r => expect(r.is_demerit).toBe(1));
+      });
+    });
+
+    describe('advancedSearch', () => {
+      it('should return results when no filters specified', () => {
+        const results = advancedSearch({}, TEST_DB_PATH);
+        expect(Array.isArray(results)).toBe(true);
+        expect(results.length).toBeGreaterThan(0);
+      });
+
+      it('should filter by runningStyle nige', () => {
+        const results = advancedSearch({ runningStyle: 'nige' }, TEST_DB_PATH);
+        expect(results.length).toBeGreaterThan(0);
+        // 逃げ専用スキル、または作戦条件なしのスキルが返される
+        results.forEach(r => {
+          if (r.activationConditionRaw) {
+            // 他の作戦専用（先行/差し/追込）を除外
+            const hasOtherRunningStyle = /running_style==[234]/.test(r.activationConditionRaw);
+            expect(hasOtherRunningStyle).toBe(false);
+          }
+        });
+      });
+
+      it('should filter by phase non_late', () => {
+        const results = advancedSearch({ phase: 'non_late' }, TEST_DB_PATH);
+        expect(results.length).toBeGreaterThan(0);
+        // 終盤以外のスキルが返される
+        results.forEach(r => {
+          if (r.activationConditionRaw) {
+            // 終盤条件（phase>=2, is_finalcorner, is_last_straight など）を含まないこと
+            const isLatePhase =
+              /phase>=2/.test(r.activationConditionRaw) ||
+              /is_finalcorner==1/.test(r.activationConditionRaw) ||
+              /is_last_straight==1/.test(r.activationConditionRaw);
+            expect(isLatePhase).toBe(false);
+          }
+        });
+      });
+
+      it('should filter by effectType speed', () => {
+        const results = advancedSearch({ effectType: 'speed' }, TEST_DB_PATH);
+        expect(results.length).toBeGreaterThan(0);
+        // 速度系スキルのみが返される（effect_params に targetSpeed または currentSpeed を含む）
+        results.forEach(r => {
+          const params = r.effect_params || '';
+          const hasSpeed = params.includes('targetSpeed') || params.includes('currentSpeed');
+          expect(hasSpeed).toBe(true);
+        });
+      });
+
+      it('should exclude demerit skills when excludeDemerit is true', () => {
+        const results = advancedSearch({ excludeDemerit: true }, TEST_DB_PATH);
+        expect(results.length).toBeGreaterThan(0);
+        // デメリット効果のスキルが除外される
+        results.forEach(r => {
+          expect(r.is_demerit).toBe(0);
+        });
+      });
+
+      it('should filter by skill name', () => {
+        const results = advancedSearch({ name: 'コーナー' }, TEST_DB_PATH);
+        expect(results.length).toBeGreaterThan(0);
+        // 名前に「コーナー」を含むスキルのみ
+        results.forEach(r => {
+          expect(r.skill_name.includes('コーナー')).toBe(true);
+        });
+      });
+
+      it('should filter by skillType unique', () => {
+        const results = advancedSearch({ skillType: 'unique' }, TEST_DB_PATH);
+        expect(results.length).toBeGreaterThan(0);
+        // 固有スキルのみ
+        results.forEach(r => {
+          expect(r.skill_type).toBe('unique');
+        });
+      });
+
+      it('should respect limit parameter', () => {
+        const results = advancedSearch({ limit: 5 }, TEST_DB_PATH);
+        expect(results.length).toBeLessThanOrEqual(5);
+      });
+
+      it('should combine runningStyle and phase filters', () => {
+        const results = advancedSearch({
+          runningStyle: 'nige',
+          phase: 'non_late',
+        }, TEST_DB_PATH);
+
+        results.forEach(r => {
+          if (r.activationConditionRaw) {
+            // 他の作戦専用を除外
+            const hasOtherRunningStyle = /running_style==[234]/.test(r.activationConditionRaw);
+            expect(hasOtherRunningStyle).toBe(false);
+
+            // 終盤除外チェック
+            const isLatePhase =
+              /phase>=2/.test(r.activationConditionRaw) ||
+              /is_finalcorner==1/.test(r.activationConditionRaw) ||
+              /is_last_straight==1/.test(r.activationConditionRaw);
+            expect(isLatePhase).toBe(false);
+          }
+        });
       });
     });
   });
@@ -243,6 +402,13 @@ describe('Database', () => {
       const db = initializeDatabase(TEST_DB_PATH, false);
       const results = db.prepare('SELECT * FROM support_card_skills_view LIMIT 5').all();
       expect(results.length).toBe(5);
+      closeDatabase(db);
+    });
+
+    it('should query skill_variants_view', () => {
+      const db = initializeDatabase(TEST_DB_PATH, false);
+      const results = db.prepare('SELECT * FROM skill_variants_view LIMIT 5').all();
+      expect(results).toBeInstanceOf(Array);
       closeDatabase(db);
     });
   });

@@ -5,7 +5,7 @@ import type Database from 'better-sqlite3';
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { Skill, SupportCard, AndConditionGroup, SingleCondition, EffectParameter } from '../types/index.js';
+import type { Skill, SupportCard, AndConditionGroup, SingleCondition, EffectParameter, EffectVariant } from '../types/index.js';
 import { initializeDatabase, closeDatabase, DEFAULT_DB_PATH } from './connection.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -175,6 +175,57 @@ function importEffectParameters(
 }
 
 /**
+ * 効果バリアントをインポート
+ * @param db Database インスタンス
+ * @param skills スキル配列
+ * @param skillIdMap スキルインデックス → ID のマップ
+ */
+function importEffectVariants(
+  db: Database.Database,
+  skills: Skill[],
+  skillIdMap: Map<number, number>
+): void {
+  const insertVariantStmt = db.prepare(`
+    INSERT INTO skill_effect_variants (
+      skill_id, variant_index, trigger_condition_raw, activation_condition_raw,
+      activation_condition_description, effect_order, is_demerit
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const insertParamStmt = db.prepare(`
+    INSERT INTO variant_parameters (variant_id, parameter_key, parameter_value)
+    VALUES (?, ?, ?)
+  `);
+
+  for (let i = 0; i < skills.length; i++) {
+    const skill = skills[i];
+    const skillId = skillIdMap.get(i);
+    if (!skillId || !skill.effectVariants) continue;
+
+    for (const variant of skill.effectVariants) {
+      const result = insertVariantStmt.run(
+        skillId,
+        variant.variantIndex,
+        variant.triggerConditionRaw ?? null,
+        variant.activationConditionRaw ?? null,
+        variant.activationConditionDescription ?? null,
+        variant.effectOrder,
+        variant.isDemerit ? 1 : 0
+      );
+
+      const variantId = result.lastInsertRowid as number;
+
+      // バリアントのパラメータをインポート
+      for (const [key, value] of Object.entries(variant.effectParameters)) {
+        if (value !== undefined && typeof value === 'number') {
+          insertParamStmt.run(variantId, key, value);
+        }
+      }
+    }
+  }
+}
+
+/**
  * インポート結果
  */
 export interface ImportResult {
@@ -186,6 +237,10 @@ export interface ImportResult {
   conditionCount: number;
   /** インポートしたパラメータ数 */
   parameterCount: number;
+  /** インポートしたバリアント数 */
+  variantCount: number;
+  /** インポートしたバリアントパラメータ数 */
+  variantParameterCount: number;
 }
 
 /**
@@ -211,18 +266,23 @@ export function importToDatabase(
       const skillIdMap = importSkills(db, skills, supportCardMap);
       importSkillConditions(db, skills, skillIdMap);
       importEffectParameters(db, skills, skillIdMap);
+      importEffectVariants(db, skills, skillIdMap);
 
       // 件数を取得
       const supportCardCount = db.prepare('SELECT COUNT(*) as count FROM support_cards').get() as { count: number };
       const skillCount = db.prepare('SELECT COUNT(*) as count FROM skills').get() as { count: number };
       const conditionCount = db.prepare('SELECT COUNT(*) as count FROM skill_conditions').get() as { count: number };
       const parameterCount = db.prepare('SELECT COUNT(*) as count FROM effect_parameters').get() as { count: number };
+      const variantCount = db.prepare('SELECT COUNT(*) as count FROM skill_effect_variants').get() as { count: number };
+      const variantParameterCount = db.prepare('SELECT COUNT(*) as count FROM variant_parameters').get() as { count: number };
 
       return {
         supportCardCount: supportCardCount.count,
         skillCount: skillCount.count,
         conditionCount: conditionCount.count,
         parameterCount: parameterCount.count,
+        variantCount: variantCount.count,
+        variantParameterCount: variantParameterCount.count,
       };
     })();
 
@@ -251,6 +311,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log(`  スキル: ${result.skillCount} 件`);
     console.log(`  発動条件: ${result.conditionCount} 件`);
     console.log(`  効果パラメータ: ${result.parameterCount} 件`);
+    console.log(`  効果バリアント: ${result.variantCount} 件`);
+    console.log(`  バリアントパラメータ: ${result.variantParameterCount} 件`);
   } catch (error) {
     console.error('エラー:', error instanceof Error ? error.message : error);
     process.exit(1);

@@ -1,6 +1,13 @@
-import type { Skill, SupportCard, SkillType, ParseResult } from '../types/index.js';
+import type {
+  Skill,
+  SupportCard,
+  SkillType,
+  ParseResult,
+  EffectVariant,
+  EffectParameter,
+} from '../types/index.js';
 import { parseCondition } from './conditionParser.js';
-import { parseEffectParameters } from './effectParser.js';
+import { parseEffectParameters, hasNegativeParameter } from './effectParser.js';
 
 /**
  * サポカ名と種別を含む行をパースする
@@ -78,6 +85,147 @@ function parseEvaluationLine(line: string): {
 }
 
 /**
+ * 条件行と効果行のペアを抽出
+ */
+interface ConditionEffectPair {
+  conditionRaw: string;
+  effectLine: string;
+}
+
+/**
+ * ブロックから条件行と効果行のペアを抽出する
+ */
+function extractConditionEffectPairs(lines: string[], startIndex: number): ConditionEffectPair[] {
+  const pairs: ConditionEffectPair[] = [];
+
+  for (let i = startIndex; i < lines.length; i++) {
+    const line = lines[i].trim();
+    // 条件行は -> で始まるか、変数名+比較演算子 で始まる（変数名は英小文字・数字・アンダースコアを含む）
+    if (line.startsWith('->') || /^[a-z_][a-z0-9_]*(==|>=|<=|!=|>|<)/.test(line)) {
+      const conditionRaw = line;
+      // 次の行が効果行（「」で始まる）
+      if (i + 1 < lines.length) {
+        const nextLine = lines[i + 1].trim();
+        if (nextLine.startsWith('「')) {
+          pairs.push({ conditionRaw, effectLine: nextLine });
+          i++; // 効果行をスキップ
+        }
+      }
+    }
+  }
+
+  return pairs;
+}
+
+/**
+ * 条件式を連続発動条件（A->B）に分離する
+ */
+function splitChainedCondition(conditionRaw: string): {
+  triggerConditionRaw?: string;
+  activationConditionRaw: string;
+} {
+  // -> で始まる場合は先頭の -> を除去
+  let cleaned = conditionRaw.startsWith('->') ? conditionRaw.slice(2) : conditionRaw;
+
+  // A->B 形式の分離
+  const arrowIndex = cleaned.indexOf('->');
+  if (arrowIndex > 0) {
+    return {
+      triggerConditionRaw: cleaned.slice(0, arrowIndex),
+      activationConditionRaw: cleaned.slice(arrowIndex + 2),
+    };
+  }
+
+  return { activationConditionRaw: cleaned };
+}
+
+/**
+ * 効果バリアントを生成する
+ */
+function createEffectVariants(pairs: ConditionEffectPair[]): EffectVariant[] {
+  const variants: EffectVariant[] = [];
+  let currentEffectOrder = 0;
+  let variantIndex = 0;
+
+  for (const pair of pairs) {
+    const { triggerConditionRaw, activationConditionRaw } = splitChainedCondition(pair.conditionRaw);
+    const { parameters, conditionDescription } = parseEffectParameters(pair.effectLine);
+
+    // is_activate_other_skill_detail==1 が含まれている場合は多段発動
+    const isSubsequentActivation = activationConditionRaw.includes('is_activate_other_skill_detail==1');
+
+    if (isSubsequentActivation) {
+      currentEffectOrder++;
+    }
+
+    // activationConditionRaw から is_activate_other_skill_detail 条件を除去してパース
+    let cleanedCondition = activationConditionRaw
+      .replace(/&?is_activate_other_skill_detail==1&?/g, '')
+      .replace(/^&|&$/g, '');
+
+    // 空になった場合は undefined
+    const activationCondition = cleanedCondition ? parseCondition('->' + cleanedCondition) : undefined;
+
+    const variant: EffectVariant = {
+      variantIndex: isSubsequentActivation ? 0 : variantIndex,
+      effectOrder: currentEffectOrder,
+      isDemerit: hasNegativeParameter(parameters),
+      triggerConditionRaw,
+      activationConditionRaw,
+      activationCondition,
+      activationConditionDescription: conditionDescription,
+      effectParameters: parameters,
+    };
+
+    variants.push(variant);
+
+    if (!isSubsequentActivation) {
+      variantIndex++;
+    }
+  }
+
+  // 条件分岐効果のバリアントインデックスを再計算（同一 effectOrder 内で）
+  const orderGroups = new Map<number, EffectVariant[]>();
+  for (const v of variants) {
+    const group = orderGroups.get(v.effectOrder) || [];
+    group.push(v);
+    orderGroups.set(v.effectOrder, group);
+  }
+
+  for (const group of orderGroups.values()) {
+    // 効果の大きさでソート（targetSpeed + currentSpeed の合計で比較）
+    group.sort((a, b) => {
+      const aTotal = (a.effectParameters.targetSpeed || 0) + (a.effectParameters.currentSpeed || 0);
+      const bTotal = (b.effectParameters.targetSpeed || 0) + (b.effectParameters.currentSpeed || 0);
+      return bTotal - aTotal; // 降順
+    });
+
+    // variantIndex を振り直す
+    for (let i = 0; i < group.length; i++) {
+      group[i].variantIndex = i;
+    }
+  }
+
+  return variants;
+}
+
+/**
+ * 2行目がサポカ行かどうかを判定する
+ * サポカ行の特徴: [衣装名]キャラ名 パターン、または 固有/進化 キーワードを含む
+ */
+function isSupportCardLine(line: string): boolean {
+  // [衣装名]キャラ名 パターン
+  if (/^\[.+\]/.test(line)) {
+    return true;
+  }
+  // 固有/進化 キーワードを含む
+  if (line.includes('固有') || line.includes('進化')) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * スキルブロックをパースする
  */
 function parseSkillBlock(lines: string[], blockStartLine: number): {
@@ -101,44 +249,71 @@ function parseSkillBlock(lines: string[], blockStartLine: number): {
       };
     }
 
-    // 2行目: サポカ名・種別
-    const { supportCard, type, baseSkillName } = parseSupportCardLine(lines[1]);
+    // 2行目がサポカ行かどうかで解析オフセットを決定
+    const hasSupportCardLine = isSupportCardLine(lines[1]);
+    const offset = hasSupportCardLine ? 0 : -1;
 
-    // 3行目: 効果説明
-    const description = lines[2].trim();
+    // 2行目: サポカ名・種別（サポカ行がある場合のみ）
+    let supportCard: SupportCard | null = null;
+    let type: SkillType = 'normal';
+    let baseSkillName: string | undefined;
 
-    // 4行目: 評価点・人気・発動タイプ
+    if (hasSupportCardLine) {
+      const parsed = parseSupportCardLine(lines[1]);
+      supportCard = parsed.supportCard;
+      type = parsed.type;
+      baseSkillName = parsed.baseSkillName;
+    }
+
+    // 効果説明行（サポカあり: 3行目、なし: 2行目）
+    const descriptionIndex = 2 + offset;
+    const description = descriptionIndex >= 0 && descriptionIndex < lines.length
+      ? lines[descriptionIndex].trim()
+      : '';
+
+    // 評価点・人気・発動タイプ行（サポカあり: 4行目、なし: 3行目）
     let evaluationPoint = 0;
     let popularity: string | undefined;
     let triggerType: string | undefined;
 
-    if (lines.length >= 4) {
-      const evalResult = parseEvaluationLine(lines[3]);
+    const evalLineIndex = 3 + offset;
+    if (evalLineIndex >= 0 && evalLineIndex < lines.length) {
+      const evalResult = parseEvaluationLine(lines[evalLineIndex]);
       evaluationPoint = evalResult.evaluationPoint;
       popularity = evalResult.popularity;
       triggerType = evalResult.triggerType;
     }
 
-    // 発動条件式を探す (-> で始まる行)
-    let conditionRaw: string | undefined;
-    let conditionLineIndex = -1;
-    for (let i = 4; i < lines.length; i++) {
-      if (lines[i].trim().startsWith('->')) {
-        conditionRaw = lines[i].trim();
-        conditionLineIndex = i;
-        break;
-      }
+    // 条件行と効果行のペアを抽出（サポカあり: 5行目以降、なし: 4行目以降）
+    const pairStartIndex = 4 + offset;
+    const pairs = extractConditionEffectPairs(lines, pairStartIndex);
+
+    // 効果バリアントを生成
+    let effectVariants = createEffectVariants(pairs);
+
+    // 条件/効果ペアがない場合でも最低限のデフォルト effectVariant を生成
+    if (effectVariants.length === 0) {
+      effectVariants = [{
+        variantIndex: 0,
+        effectOrder: 0,
+        isDemerit: false,
+        triggerConditionRaw: undefined,
+        activationConditionRaw: undefined,
+        activationCondition: undefined,
+        activationConditionDescription: undefined,
+        effectParameters: {},
+      }];
     }
 
-    // 効果パラメータ行 (最終行、または条件行の次)
-    let effectLine = '';
-    if (conditionLineIndex >= 0 && conditionLineIndex + 1 < lines.length) {
-      effectLine = lines[conditionLineIndex + 1];
-    } else if (lines.length > 4) {
-      effectLine = lines[lines.length - 1];
-    }
-
-    const { parameters, conditionDescription } = parseEffectParameters(effectLine);
+    // 後方互換性: 最大効果（variantIndex=0, effectOrder=0）を effectParameters として設定
+    const primaryVariant = effectVariants.find((v) => v.variantIndex === 0 && v.effectOrder === 0);
+    const effectParameters: EffectParameter = primaryVariant?.effectParameters || {};
+    const conditionDescription = primaryVariant?.activationConditionDescription;
+    const conditionRaw = primaryVariant?.activationConditionRaw
+      ? (primaryVariant.triggerConditionRaw
+          ? `${primaryVariant.triggerConditionRaw}->${primaryVariant.activationConditionRaw}`
+          : `->${primaryVariant.activationConditionRaw}`)
+      : undefined;
     const condition = conditionRaw ? parseCondition(conditionRaw) : undefined;
 
     const skill: Skill = {
@@ -152,8 +327,9 @@ function parseSkillBlock(lines: string[], blockStartLine: number): {
       triggerType,
       conditionRaw,
       condition,
-      effectParameters: parameters,
+      effectParameters,
       conditionDescription,
+      effectVariants,
     };
 
     return { skill };

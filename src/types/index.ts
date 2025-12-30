@@ -7,6 +7,8 @@ export interface EffectParameter {
   targetSpeed?: number;
   /** 加速度値 */
   acceleration?: number;
+  /** 現在速度値 */
+  currentSpeed?: number;
   /** 持続時間（秒） */
   duration?: number;
   /** 体力回復量 */
@@ -41,6 +43,29 @@ export interface AndConditionGroup {
 export interface Condition {
   type: 'or';
   groups: AndConditionGroup[];
+}
+
+/**
+ * 効果バリアント
+ * 同一スキルの複数効果パターンを表現
+ */
+export interface EffectVariant {
+  /** バリアントインデックス（条件分岐での順序、0が最大効果） */
+  variantIndex: number;
+  /** 多段発動の順序（0=1回目、1=2回目、...） */
+  effectOrder: number;
+  /** デメリット効果かどうか */
+  isDemerit: boolean;
+  /** 連続発動の前半条件（A->B の A 部分、生文字列） */
+  triggerConditionRaw?: string;
+  /** 発動条件式（生文字列） */
+  activationConditionRaw?: string;
+  /** 発動条件式（パース済み） */
+  activationCondition?: Condition;
+  /** 発動条件の日本語解説 */
+  activationConditionDescription?: string;
+  /** 効果パラメータ */
+  effectParameters: EffectParameter;
 }
 
 /**
@@ -84,10 +109,12 @@ export interface Skill {
   conditionRaw?: string;
   /** 発動条件式（パース済み） */
   condition?: Condition;
-  /** 効果パラメータ */
+  /** 効果パラメータ（後方互換性のため維持、最大効果を返す） */
   effectParameters: EffectParameter;
   /** 条件の日本語解説 */
   conditionDescription?: string;
+  /** 効果バリアント一覧（複数効果パターン対応） */
+  effectVariants?: EffectVariant[];
 }
 
 /**

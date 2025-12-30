@@ -46,6 +46,28 @@ CREATE TABLE IF NOT EXISTS effect_parameters (
   FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE
 );
 
+-- 効果バリアントテーブル（USM-003: 複数効果パターン対応）
+CREATE TABLE IF NOT EXISTS skill_effect_variants (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  skill_id INTEGER NOT NULL,
+  variant_index INTEGER NOT NULL,
+  trigger_condition_raw TEXT,
+  activation_condition_raw TEXT,
+  activation_condition_description TEXT,
+  effect_order INTEGER NOT NULL DEFAULT 0,
+  is_demerit INTEGER NOT NULL DEFAULT 0,
+  FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE
+);
+
+-- バリアント効果パラメータテーブル
+CREATE TABLE IF NOT EXISTS variant_parameters (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  variant_id INTEGER NOT NULL,
+  parameter_key TEXT NOT NULL,
+  parameter_value REAL NOT NULL,
+  FOREIGN KEY (variant_id) REFERENCES skill_effect_variants(id) ON DELETE CASCADE
+);
+
 -- インデックス
 CREATE INDEX IF NOT EXISTS idx_skills_name ON skills(name);
 CREATE INDEX IF NOT EXISTS idx_skills_type ON skills(type);
@@ -54,6 +76,9 @@ CREATE INDEX IF NOT EXISTS idx_skill_conditions_skill_id ON skill_conditions(ski
 CREATE INDEX IF NOT EXISTS idx_skill_conditions_variable ON skill_conditions(variable);
 CREATE INDEX IF NOT EXISTS idx_effect_parameters_skill_id ON effect_parameters(skill_id);
 CREATE INDEX IF NOT EXISTS idx_effect_parameters_key ON effect_parameters(parameter_key);
+CREATE INDEX IF NOT EXISTS idx_skill_effect_variants_skill_id ON skill_effect_variants(skill_id);
+CREATE INDEX IF NOT EXISTS idx_skill_effect_variants_effect_order ON skill_effect_variants(effect_order);
+CREATE INDEX IF NOT EXISTS idx_variant_parameters_variant_id ON variant_parameters(variant_id);
 
 -- VIEW: スキル+サポカ+効果パラメータの結合ビュー
 CREATE VIEW IF NOT EXISTS skill_full_view AS
@@ -107,3 +132,25 @@ SELECT
   s.description
 FROM support_cards sc
 JOIN skills s ON sc.id = s.support_card_id;
+
+-- VIEW: 効果バリアント一覧（USM-003）
+CREATE VIEW IF NOT EXISTS skill_variants_view AS
+SELECT
+  s.id AS skill_id,
+  s.name AS skill_name,
+  s.type AS skill_type,
+  s.evaluation_point,
+  sc.full_name AS support_card_full_name,
+  sev.id AS variant_id,
+  sev.variant_index,
+  sev.effect_order,
+  sev.is_demerit,
+  sev.trigger_condition_raw,
+  sev.activation_condition_raw,
+  sev.activation_condition_description,
+  GROUP_CONCAT(vp.parameter_key || ':' || vp.parameter_value) AS effect_params
+FROM skills s
+LEFT JOIN support_cards sc ON s.support_card_id = sc.id
+JOIN skill_effect_variants sev ON s.id = sev.skill_id
+LEFT JOIN variant_parameters vp ON sev.id = vp.variant_id
+GROUP BY sev.id;

@@ -47,6 +47,9 @@ export function initializeDatabase(
       DROP VIEW IF EXISTS skill_full_view;
       DROP VIEW IF EXISTS condition_search_view;
       DROP VIEW IF EXISTS support_card_skills_view;
+      DROP VIEW IF EXISTS skill_variants_view;
+      DROP TABLE IF EXISTS variant_parameters;
+      DROP TABLE IF EXISTS skill_effect_variants;
       DROP TABLE IF EXISTS effect_parameters;
       DROP TABLE IF EXISTS skill_conditions;
       DROP TABLE IF EXISTS skills;
