@@ -15,7 +15,10 @@ CREATE TABLE IF NOT EXISTS skills (
   name TEXT NOT NULL,
   support_card_id INTEGER,
   type TEXT NOT NULL CHECK (type IN ('unique', 'evolution', 'normal')),
+  sub_type TEXT NOT NULL CHECK (sub_type IN ('unique', 'inherited_unique', 'gold', 'normal', 'evolution')),
   base_skill_name TEXT,
+  sp_cost INTEGER,
+  sp_total INTEGER,
   description TEXT NOT NULL,
   evaluation_point INTEGER NOT NULL,
   popularity TEXT,
@@ -71,6 +74,7 @@ CREATE TABLE IF NOT EXISTS variant_parameters (
 -- インデックス
 CREATE INDEX IF NOT EXISTS idx_skills_name ON skills(name);
 CREATE INDEX IF NOT EXISTS idx_skills_type ON skills(type);
+CREATE INDEX IF NOT EXISTS idx_skills_sub_type ON skills(sub_type);
 CREATE INDEX IF NOT EXISTS idx_skills_support_card_id ON skills(support_card_id);
 CREATE INDEX IF NOT EXISTS idx_skill_conditions_skill_id ON skill_conditions(skill_id);
 CREATE INDEX IF NOT EXISTS idx_skill_conditions_variable ON skill_conditions(variable);
@@ -86,7 +90,10 @@ SELECT
   s.id,
   s.name,
   s.type,
+  s.sub_type,
   s.base_skill_name,
+  s.sp_cost,
+  s.sp_total,
   s.description,
   s.evaluation_point,
   s.popularity,
@@ -109,6 +116,7 @@ SELECT
   s.id AS skill_id,
   s.name AS skill_name,
   s.type AS skill_type,
+  s.sub_type AS skill_sub_type,
   s.description,
   sc.group_index,
   sc.condition_index,
@@ -128,6 +136,7 @@ SELECT
   s.id AS skill_id,
   s.name AS skill_name,
   s.type AS skill_type,
+  s.sub_type AS skill_sub_type,
   s.evaluation_point,
   s.description
 FROM support_cards sc
@@ -139,6 +148,7 @@ SELECT
   s.id AS skill_id,
   s.name AS skill_name,
   s.type AS skill_type,
+  s.sub_type AS skill_sub_type,
   s.evaluation_point,
   sc.full_name AS support_card_full_name,
   sev.id AS variant_id,

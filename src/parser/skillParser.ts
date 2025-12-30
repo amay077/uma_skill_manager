@@ -2,6 +2,7 @@ import type {
   Skill,
   SupportCard,
   SkillType,
+  SkillSubType,
   ParseResult,
   EffectVariant,
   EffectParameter,
@@ -50,22 +51,49 @@ function parseSupportCardLine(line: string): {
 }
 
 /**
- * 評価点・人気・発動タイプ行をパースする
+ * 評価点・人気・発動タイプ・SP行をパースする
  * 例: "評価点240、人気:スピード30、確定発動"
+ * 例: "評価点508、SP180(合計360)、人気:スタミナ60"（金スキル）
+ * 例: "評価点217、SP180、人気:スタミナ20"（通常スキル）
+ * 例: "評価点633、進化元SP360、人気:スタミナ60"（進化スキル）
  */
 function parseEvaluationLine(line: string): {
   evaluationPoint: number;
   popularity?: string;
   triggerType?: string;
+  spCost?: number;
+  spTotal?: number;
+  evolutionBaseSp?: number;
 } {
   let evaluationPoint = 0;
   let popularity: string | undefined;
   let triggerType: string | undefined;
+  let spCost: number | undefined;
+  let spTotal: number | undefined;
+  let evolutionBaseSp: number | undefined;
 
   // 評価点
   const evalMatch = line.match(/評価点(\d+)/);
   if (evalMatch) {
     evaluationPoint = parseInt(evalMatch[1], 10);
+  }
+
+  // SP値（金スキル: SP180(合計360)、通常: SP200）
+  const spTotalMatch = line.match(/SP(\d+)\(合計(\d+)\)/);
+  if (spTotalMatch) {
+    spCost = parseInt(spTotalMatch[1], 10);
+    spTotal = parseInt(spTotalMatch[2], 10);
+  } else {
+    const spOnlyMatch = line.match(/、SP(\d+)、/);
+    if (spOnlyMatch) {
+      spCost = parseInt(spOnlyMatch[1], 10);
+    }
+  }
+
+  // 進化元SP
+  const evolutionSpMatch = line.match(/進化元SP(\d+)/);
+  if (evolutionSpMatch) {
+    evolutionBaseSp = parseInt(evolutionSpMatch[1], 10);
   }
 
   // 人気
@@ -81,7 +109,33 @@ function parseEvaluationLine(line: string): {
     triggerType = lastPart;
   }
 
-  return { evaluationPoint, popularity, triggerType };
+  return { evaluationPoint, popularity, triggerType, spCost, spTotal, evolutionBaseSp };
+}
+
+/**
+ * スキル詳細種別（subType）を決定する
+ * - unique: 固有スキル（type='unique' かつ 評価点>=300）
+ * - inherited_unique: 継承固有スキル（type='unique' かつ 評価点<300）
+ * - gold: 金スキル（type='normal' かつ SP合計表記あり）
+ * - normal: 通常スキル（type='normal' かつ SP値のみ）
+ * - evolution: 進化スキル（type='evolution'）
+ */
+function determineSubType(
+  type: SkillType,
+  evaluationPoint: number,
+  spTotal?: number
+): SkillSubType {
+  switch (type) {
+    case 'unique':
+      // 固有スキルは評価点300以上が本来の固有、それ未満は継承固有
+      return evaluationPoint >= 300 ? 'unique' : 'inherited_unique';
+    case 'evolution':
+      return 'evolution';
+    case 'normal':
+    default:
+      // SP合計表記がある場合は金スキル、そうでなければ通常スキル
+      return spTotal !== undefined ? 'gold' : 'normal';
+  }
 }
 
 /**
@@ -271,10 +325,12 @@ function parseSkillBlock(lines: string[], blockStartLine: number): {
       ? lines[descriptionIndex].trim()
       : '';
 
-    // 評価点・人気・発動タイプ行（サポカあり: 4行目、なし: 3行目）
+    // 評価点・人気・発動タイプ・SP行（サポカあり: 4行目、なし: 3行目）
     let evaluationPoint = 0;
     let popularity: string | undefined;
     let triggerType: string | undefined;
+    let spCost: number | undefined;
+    let spTotal: number | undefined;
 
     const evalLineIndex = 3 + offset;
     if (evalLineIndex >= 0 && evalLineIndex < lines.length) {
@@ -282,7 +338,12 @@ function parseSkillBlock(lines: string[], blockStartLine: number): {
       evaluationPoint = evalResult.evaluationPoint;
       popularity = evalResult.popularity;
       triggerType = evalResult.triggerType;
+      spCost = evalResult.spCost;
+      spTotal = evalResult.spTotal;
     }
+
+    // スキル詳細種別を決定
+    const subType = determineSubType(type, evaluationPoint, spTotal);
 
     // 条件行と効果行のペアを抽出（サポカあり: 5行目以降、なし: 4行目以降）
     const pairStartIndex = 4 + offset;
@@ -320,7 +381,10 @@ function parseSkillBlock(lines: string[], blockStartLine: number): {
       name,
       supportCard,
       type,
+      subType,
       baseSkillName,
+      spCost,
+      spTotal,
       description,
       evaluationPoint,
       popularity,

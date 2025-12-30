@@ -83,9 +83,9 @@ function importSkills(
 
   const insertStmt = db.prepare(`
     INSERT INTO skills (
-      name, support_card_id, type, base_skill_name, description,
-      evaluation_point, popularity, trigger_type, condition_raw, condition_description
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      name, support_card_id, type, sub_type, base_skill_name, sp_cost, sp_total,
+      description, evaluation_point, popularity, trigger_type, condition_raw, condition_description
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   for (let i = 0; i < skills.length; i++) {
@@ -98,7 +98,10 @@ function importSkills(
       skill.name,
       supportCardId,
       skill.type,
+      skill.subType,
       skill.baseSkillName ?? null,
+      skill.spCost ?? null,
+      skill.spTotal ?? null,
       skill.description,
       skill.evaluationPoint,
       skill.popularity ?? null,

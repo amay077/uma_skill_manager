@@ -81,9 +81,19 @@ export interface SupportCard {
 }
 
 /**
- * スキル種別
+ * スキル種別（大分類）
  */
 export type SkillType = 'unique' | 'evolution' | 'normal';
+
+/**
+ * スキル詳細種別（小分類）
+ * - unique: 固有スキル（評価点300以上）
+ * - inherited_unique: 継承固有スキル（評価点300未満）
+ * - gold: 金スキル（SP合計表記あり）
+ * - normal: 通常スキル（SPのみ）
+ * - evolution: 進化スキル
+ */
+export type SkillSubType = 'unique' | 'inherited_unique' | 'gold' | 'normal' | 'evolution';
 
 /**
  * スキルデータ
@@ -93,10 +103,16 @@ export interface Skill {
   name: string;
   /** サポートカード情報（通常スキルは null） */
   supportCard: SupportCard | null;
-  /** スキル種別 */
+  /** スキル種別（大分類） */
   type: SkillType;
+  /** スキル詳細種別（小分類） */
+  subType: SkillSubType;
   /** 進化元スキル名（進化スキルのみ） */
   baseSkillName?: string;
+  /** スキルポイント消費（習得に必要なSP） */
+  spCost?: number;
+  /** スキルポイント合計（金スキルの場合、下位スキルとの合計） */
+  spTotal?: number;
   /** 効果説明文 */
   description: string;
   /** 評価点 */

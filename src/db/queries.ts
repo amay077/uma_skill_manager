@@ -444,9 +444,14 @@ export type EffectType = 'speed' | 'accel' | 'stamina' | 'position' | 'debuff' |
 export type OrderRange = 'top1' | 'top2' | 'top4' | 'top6' | 'mid' | 'back' | 'any';
 
 /**
- * スキルタイプ
+ * スキルタイプ（大分類）
  */
 export type SkillType = 'unique' | 'evolution' | 'normal' | 'any';
+
+/**
+ * スキル詳細タイプ（小分類）
+ */
+export type SkillSubType = 'unique' | 'inherited_unique' | 'gold' | 'normal' | 'evolution' | 'any';
 
 /**
  * バ場タイプ
@@ -467,8 +472,10 @@ export interface AdvancedSearchOptions {
   effectType?: EffectType;
   /** 順位条件（チャンミ換算） */
   orderRange?: OrderRange;
-  /** スキルタイプ */
+  /** スキルタイプ（大分類） */
   skillType?: SkillType;
+  /** スキル詳細タイプ（小分類） */
+  skillSubType?: SkillSubType;
   /** バ場 */
   groundType?: GroundType;
   /** デメリット除外 */
@@ -486,8 +493,11 @@ export interface AdvancedSearchResult {
   skill_id: number;
   skill_name: string;
   skill_type: string;
+  skill_sub_type: string;
   description: string;
   evaluation_point: number;
+  sp_cost: number | null;
+  sp_total: number | null;
   support_card_full_name: string | null;
   variant_id: number;
   variant_index: number;
@@ -773,10 +783,16 @@ export function advancedSearch(
       params.push(`%${options.name}%`);
     }
 
-    // スキルタイプ
+    // スキルタイプ（大分類）
     if (options.skillType && options.skillType !== 'any') {
       conditions.push('s.type = ?');
       params.push(options.skillType);
+    }
+
+    // スキル詳細タイプ（小分類）
+    if (options.skillSubType && options.skillSubType !== 'any') {
+      conditions.push('s.sub_type = ?');
+      params.push(options.skillSubType);
     }
 
     // デメリット除外
@@ -813,8 +829,11 @@ export function advancedSearch(
         s.id AS skill_id,
         s.name AS skill_name,
         s.type AS skill_type,
+        s.sub_type AS skill_sub_type,
         s.description,
         s.evaluation_point,
+        s.sp_cost,
+        s.sp_total,
         sc.full_name AS support_card_full_name,
         sev.id AS variant_id,
         sev.variant_index,

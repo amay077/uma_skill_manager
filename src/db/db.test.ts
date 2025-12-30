@@ -288,9 +288,9 @@ describe('Database', () => {
         expect(results.length).toBeGreaterThan(0);
         // 逃げ専用スキル、または作戦条件なしのスキルが返される
         results.forEach(r => {
-          if (r.activationConditionRaw) {
+          if (r.activation_condition_raw) {
             // 他の作戦専用（先行/差し/追込）を除外
-            const hasOtherRunningStyle = /running_style==[234]/.test(r.activationConditionRaw);
+            const hasOtherRunningStyle = /running_style==[234]/.test(r.activation_condition_raw);
             expect(hasOtherRunningStyle).toBe(false);
           }
         });
@@ -301,12 +301,12 @@ describe('Database', () => {
         expect(results.length).toBeGreaterThan(0);
         // 終盤以外のスキルが返される
         results.forEach(r => {
-          if (r.activationConditionRaw) {
+          if (r.activation_condition_raw) {
             // 終盤条件（phase>=2, is_finalcorner, is_last_straight など）を含まないこと
             const isLatePhase =
-              /phase>=2/.test(r.activationConditionRaw) ||
-              /is_finalcorner==1/.test(r.activationConditionRaw) ||
-              /is_last_straight==1/.test(r.activationConditionRaw);
+              /phase>=2/.test(r.activation_condition_raw) ||
+              /is_finalcorner==1/.test(r.activation_condition_raw) ||
+              /is_last_straight==1/.test(r.activation_condition_raw);
             expect(isLatePhase).toBe(false);
           }
         });
@@ -350,6 +350,33 @@ describe('Database', () => {
         });
       });
 
+      it('should filter by skillSubType gold', () => {
+        const results = advancedSearch({ skillSubType: 'gold' }, TEST_DB_PATH);
+        expect(results.length).toBeGreaterThan(0);
+        // 金スキルのみ
+        results.forEach(r => {
+          expect(r.skill_sub_type).toBe('gold');
+        });
+      });
+
+      it('should filter by skillSubType normal', () => {
+        const results = advancedSearch({ skillSubType: 'normal' }, TEST_DB_PATH);
+        expect(results.length).toBeGreaterThan(0);
+        // 通常スキルのみ
+        results.forEach(r => {
+          expect(r.skill_sub_type).toBe('normal');
+        });
+      });
+
+      it('should filter by skillSubType inherited_unique', () => {
+        const results = advancedSearch({ skillSubType: 'inherited_unique' }, TEST_DB_PATH);
+        expect(results.length).toBeGreaterThan(0);
+        // 継承固有スキルのみ
+        results.forEach(r => {
+          expect(r.skill_sub_type).toBe('inherited_unique');
+        });
+      });
+
       it('should respect limit parameter', () => {
         const results = advancedSearch({ limit: 5 }, TEST_DB_PATH);
         expect(results.length).toBeLessThanOrEqual(5);
@@ -362,16 +389,16 @@ describe('Database', () => {
         }, TEST_DB_PATH);
 
         results.forEach(r => {
-          if (r.activationConditionRaw) {
+          if (r.activation_condition_raw) {
             // 他の作戦専用を除外
-            const hasOtherRunningStyle = /running_style==[234]/.test(r.activationConditionRaw);
+            const hasOtherRunningStyle = /running_style==[234]/.test(r.activation_condition_raw);
             expect(hasOtherRunningStyle).toBe(false);
 
             // 終盤除外チェック
             const isLatePhase =
-              /phase>=2/.test(r.activationConditionRaw) ||
-              /is_finalcorner==1/.test(r.activationConditionRaw) ||
-              /is_last_straight==1/.test(r.activationConditionRaw);
+              /phase>=2/.test(r.activation_condition_raw) ||
+              /is_finalcorner==1/.test(r.activation_condition_raw) ||
+              /is_last_straight==1/.test(r.activation_condition_raw);
             expect(isLatePhase).toBe(false);
           }
         });
