@@ -587,14 +587,37 @@ function buildPhaseCondition(phase: PhaseType): string | null {
   if (phase === 'any') return null;
 
   // 終盤系条件のパターン
+  // 終盤 = distance_rate >= 66（レース進行率66%以上）
   const latePatterns = [
+    // phase 変数による終盤判定
     "activation_condition_raw LIKE '%phase>=2%'",
     "activation_condition_raw LIKE '%phase==2%'",
     "activation_condition_raw LIKE '%phase==3%'",
     "activation_condition_raw LIKE '%phase_random==2%'",
+    // 終盤特有のコース位置
     "activation_condition_raw LIKE '%is_finalcorner%'",
     "activation_condition_raw LIKE '%is_last_straight%'",
     "activation_condition_raw LIKE '%is_lastspurt%'",
+    // distance_rate による終盤判定（66%以上）
+    "activation_condition_raw LIKE '%distance_rate>=66%'",
+    "activation_condition_raw LIKE '%distance_rate>=67%'",
+    "activation_condition_raw LIKE '%distance_rate>=68%'",
+    "activation_condition_raw LIKE '%distance_rate>=69%'",
+    "activation_condition_raw LIKE '%distance_rate>=70%'",
+    "activation_condition_raw LIKE '%distance_rate>=75%'",
+    "activation_condition_raw LIKE '%distance_rate>=80%'",
+    "activation_condition_raw LIKE '%distance_rate>=85%'",
+    "activation_condition_raw LIKE '%distance_rate>=90%'",
+    "activation_condition_raw LIKE '%distance_rate>=95%'",
+    // 残り距離による終盤判定（残り400m以下は終盤相当）
+    "activation_condition_raw LIKE '%remain_distance<=400%'",
+    "activation_condition_raw LIKE '%remain_distance<=350%'",
+    "activation_condition_raw LIKE '%remain_distance<=300%'",
+    "activation_condition_raw LIKE '%remain_distance<=250%'",
+    "activation_condition_raw LIKE '%remain_distance<=200%'",
+    "activation_condition_raw LIKE '%remain_distance<=150%'",
+    "activation_condition_raw LIKE '%remain_distance<=100%'",
+    "activation_condition_raw LIKE '%remain_distance<=50%'",
   ];
 
   switch (phase) {

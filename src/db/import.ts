@@ -230,6 +230,20 @@ function parseRunningStyleFlags(conditionRaw: string | null): string {
 function parseDistanceFlags(conditionRaw: string | null): string {
   if (!conditionRaw) return '1111';
 
+  // distance_type==N パターンを優先（1=短距離, 2=マイル, 3=中距離, 4=長距離）
+  const distTypeFlags = ['0', '0', '0', '0'];
+  const distTypeMatches = conditionRaw.matchAll(/distance_type==(\d)/g);
+  for (const match of distTypeMatches) {
+    const distType = parseInt(match[1], 10);
+    if (distType >= 1 && distType <= 4) {
+      distTypeFlags[distType - 1] = '1';
+    }
+  }
+  // distance_type が1つ以上マッチした場合はそれを返す
+  if (distTypeFlags.includes('1')) {
+    return distTypeFlags.join('');
+  }
+
   // 距離境界値
   const SHORT_MAX = 1599;
   const MILE_MIN = 1600;
@@ -423,7 +437,7 @@ function parseAllFlags(
     .join('&');
 
   return {
-    runningStyleFlags: parseRunningStyleFlags(triggerConditionRaw),
+    runningStyleFlags: parseRunningStyleFlags(combinedCondition || null),
     distanceFlags: parseDistanceFlags(combinedCondition || null),
     groundFlags: parseGroundFlags(combinedCondition || null),
     orderFlags: parseOrderFlags(triggerConditionRaw, activationConditionRaw),
