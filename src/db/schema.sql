@@ -1,0 +1,109 @@
+-- Uma Skill Manager Database Schema
+-- Phase 2: データベース構築
+
+-- サポートカードテーブル
+CREATE TABLE IF NOT EXISTS support_cards (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  costume_name TEXT NOT NULL,
+  character_name TEXT NOT NULL,
+  full_name TEXT NOT NULL UNIQUE
+);
+
+-- スキルテーブル
+CREATE TABLE IF NOT EXISTS skills (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  support_card_id INTEGER,
+  type TEXT NOT NULL CHECK (type IN ('unique', 'evolution', 'normal')),
+  base_skill_name TEXT,
+  description TEXT NOT NULL,
+  evaluation_point INTEGER NOT NULL,
+  popularity TEXT,
+  trigger_type TEXT,
+  condition_raw TEXT,
+  condition_description TEXT,
+  FOREIGN KEY (support_card_id) REFERENCES support_cards(id)
+);
+
+-- 発動条件テーブル（正規化）
+CREATE TABLE IF NOT EXISTS skill_conditions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  skill_id INTEGER NOT NULL,
+  group_index INTEGER NOT NULL,
+  condition_index INTEGER NOT NULL,
+  variable TEXT NOT NULL,
+  operator TEXT NOT NULL,
+  value REAL NOT NULL,
+  FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE
+);
+
+-- 効果パラメータテーブル（KV形式）
+CREATE TABLE IF NOT EXISTS effect_parameters (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  skill_id INTEGER NOT NULL,
+  parameter_key TEXT NOT NULL,
+  parameter_value REAL NOT NULL,
+  FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE
+);
+
+-- インデックス
+CREATE INDEX IF NOT EXISTS idx_skills_name ON skills(name);
+CREATE INDEX IF NOT EXISTS idx_skills_type ON skills(type);
+CREATE INDEX IF NOT EXISTS idx_skills_support_card_id ON skills(support_card_id);
+CREATE INDEX IF NOT EXISTS idx_skill_conditions_skill_id ON skill_conditions(skill_id);
+CREATE INDEX IF NOT EXISTS idx_skill_conditions_variable ON skill_conditions(variable);
+CREATE INDEX IF NOT EXISTS idx_effect_parameters_skill_id ON effect_parameters(skill_id);
+CREATE INDEX IF NOT EXISTS idx_effect_parameters_key ON effect_parameters(parameter_key);
+
+-- VIEW: スキル+サポカ+効果パラメータの結合ビュー
+CREATE VIEW IF NOT EXISTS skill_full_view AS
+SELECT
+  s.id,
+  s.name,
+  s.type,
+  s.base_skill_name,
+  s.description,
+  s.evaluation_point,
+  s.popularity,
+  s.trigger_type,
+  s.condition_raw,
+  s.condition_description,
+  sc.id AS support_card_id,
+  sc.costume_name,
+  sc.character_name,
+  sc.full_name AS support_card_full_name,
+  GROUP_CONCAT(DISTINCT ep.parameter_key || ':' || ep.parameter_value) AS effect_params
+FROM skills s
+LEFT JOIN support_cards sc ON s.support_card_id = sc.id
+LEFT JOIN effect_parameters ep ON s.id = ep.skill_id
+GROUP BY s.id;
+
+-- VIEW: 条件式での検索用ビュー
+CREATE VIEW IF NOT EXISTS condition_search_view AS
+SELECT
+  s.id AS skill_id,
+  s.name AS skill_name,
+  s.type AS skill_type,
+  s.description,
+  sc.group_index,
+  sc.condition_index,
+  sc.variable,
+  sc.operator,
+  sc.value
+FROM skills s
+JOIN skill_conditions sc ON s.id = sc.skill_id;
+
+-- VIEW: サポカごとのスキル一覧
+CREATE VIEW IF NOT EXISTS support_card_skills_view AS
+SELECT
+  sc.id AS support_card_id,
+  sc.costume_name,
+  sc.character_name,
+  sc.full_name,
+  s.id AS skill_id,
+  s.name AS skill_name,
+  s.type AS skill_type,
+  s.evaluation_point,
+  s.description
+FROM support_cards sc
+JOIN skills s ON sc.id = s.support_card_id;
