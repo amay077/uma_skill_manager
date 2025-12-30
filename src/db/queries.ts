@@ -588,19 +588,23 @@ function buildPhaseCondition(phase: PhaseType): string | null {
 
   switch (phase) {
     case 'early':
-      // 序盤条件を含む
+      // 序盤条件を含む（前半 distance_rate<=50 は序盤と中盤に跨る）
       return `(
         activation_condition_raw LIKE '%phase==0%'
         OR activation_condition_raw LIKE '%phase_random==0%'
         OR activation_condition_raw LIKE '%phase_laterhalf_random==0%'
+        OR activation_condition_raw LIKE '%distance_rate<=50%'
       )`;
 
     case 'mid':
-      // 中盤条件を含む
+      // 中盤条件を含む（前半・後半とも中盤に跨る）
       return `(
         activation_condition_raw LIKE '%phase==1%'
         OR activation_condition_raw LIKE '%phase_random==1%'
         OR activation_condition_raw LIKE '%phase_laterhalf_random==1%'
+        OR activation_condition_raw LIKE '%distance_rate>=50%'
+        OR activation_condition_raw LIKE '%distance_rate<=50%'
+        OR activation_condition_raw LIKE '%distance_rate_after_random==50%'
         OR (
           activation_condition_raw LIKE '%distance_rate>=%'
           AND activation_condition_raw LIKE '%distance_rate<=%'
@@ -609,8 +613,11 @@ function buildPhaseCondition(phase: PhaseType): string | null {
       )`;
 
     case 'late':
-      // 終盤条件を含む
-      return `(${latePatterns.join(' OR ')})`;
+      // 終盤条件を含む（後半 distance_rate>=50 は中盤と終盤に跨る）
+      return `(
+        ${latePatterns.join(' OR ')}
+        OR activation_condition_raw LIKE '%distance_rate>=50%'
+      )`;
 
     case 'corner':
       // コーナー条件を含む

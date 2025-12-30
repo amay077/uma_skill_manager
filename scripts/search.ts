@@ -202,18 +202,21 @@ function extractOrderCondition(raw: string | null): string {
     if (m.includes('order_rate')) {
       const val = m.match(/\d+/)?.[0];
       if (m.includes('<=')) {
-        return `チャンミ〜${Math.ceil(Number(val) / 100 * 12)}位/LoH〜${Math.ceil(Number(val) / 100 * 15)}位`;
+        return `〜${Math.ceil(Number(val) / 100 * 12)}位`;
       }
       if (m.includes('>=')) {
-        return `チャンミ${Math.ceil(Number(val) / 100 * 12)}位〜/LoH${Math.ceil(Number(val) / 100 * 15)}位〜`;
+        return `${Math.ceil(Number(val) / 100 * 12)}位〜`;
       }
     }
-    if (m.includes('order==')) return `順位==${m.match(/\d+/)?.[0]}`;
-    if (m.includes('order>=')) return `順位>=${m.match(/\d+/)?.[0]}`;
-    if (m.includes('order<=')) return `順位<=${m.match(/\d+/)?.[0]}`;
+    const num = Number(m.match(/\d+/)?.[0]);
+    if (m.includes('order==')) return `${num}位`;
+    if (m.includes('order>=')) return `${num}位〜`;
+    if (m.includes('order<=')) return `1〜${num}位`;
     return m;
   });
-  return conds.join(', ');
+  // 重複を除去
+  const unique = [...new Set(conds)];
+  return unique.join(', ');
 }
 
 // タイムスタンプ生成（YYYYMMDDHHmm）
@@ -341,18 +344,18 @@ output('---');
 output('');
 output('## 検索結果');
 output('');
-output('| No | スキル名 | 種別 | 順位条件 | その他発動条件 | 速度 | 加速 | 回復 | 持続 | 評価点 |');
-output('|---:|----------|------|----------|----------------|-----:|-----:|-----:|-----:|-------:|');
+output('| No | スキル名 | 種別 | 順位条件 | 条件文 | 速度 | 加速 | 回復 | 持続 | 評価点 |');
+output('|---:|----------|------|----------|--------|-----:|-----:|-----:|-----:|-------:|');
 
 let no = 0;
 for (const r of uniqueResults) {
   no++;
   const ep = parseEffectParams(r.effect_params);
   const orderCond = extractOrderCondition(r.activation_condition_raw);
-  const otherCond = r.activation_condition_description || '-';
+  const condText = r.description || '-';
   const subType = subTypeDisplayMap[r.skill_sub_type] || r.skill_sub_type;
   output(
-    `| ${no} | ${r.skill_name} | ${subType} | ${orderCond} | ${otherCond} | ` +
+    `| ${no} | ${r.skill_name} | ${subType} | ${orderCond} | ${condText} | ` +
     `${ep.speed ?? '-'} | ${ep.accel ?? '-'} | ${ep.heal ?? '-'} | ${ep.duration ?? '-'} | ${r.evaluation_point} |`
   );
 }
