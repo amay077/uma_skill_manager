@@ -88,13 +88,13 @@ npx tsx scripts/search.ts -r nige -f simple
 検索を実行するには、以下のコマンドを実行:
 
 ```bash
-npx tsx scripts/search.ts [オプション] -O docs/skill-search.md
+npx tsx scripts/search.ts [オプション] -O results/skill-search.md
 ```
 
 ユーザーからの検索依頼を受けたら、上記コマンドに適切なオプションを付けて実行する。
 
-**重要**: 検索結果は必ず `-O docs/skill-search.md` オプションを付けてファイルに保存すること。
-出力ファイルは `docs/skill-search-YYYYMMDDHHmm.md` の形式でタイムスタンプ付きで保存される。
+**重要**: 検索結果は必ず `-O results/skill-search.md` オプションを付けてファイルに保存すること。
+出力ファイルは `results/skill-search-YYYYMMDDHHmm.md` の形式でタイムスタンプ付きで保存される。
 
 ### オプション対応表
 
