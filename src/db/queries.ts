@@ -510,6 +510,7 @@ export interface AdvancedSearchResult {
   distance_flags: string;
   ground_flags: string;
   order_flags: string;
+  phase_flags: string;
   effect_params: string | null;
 }
 
@@ -581,78 +582,40 @@ function buildDistanceTypeCondition(dist: DistanceType): string | null {
 }
 
 /**
- * フェーズ条件を生成
+ * フェーズ条件を生成（ビットフラグ方式）
+ * phase_flags: 3桁（序盤/中盤/終盤）
+ * スキル内のすべてのバリアントが指定フェーズに対応している必要がある
  */
 function buildPhaseCondition(phase: PhaseType): string | null {
   if (phase === 'any') return null;
 
-  // 終盤系条件のパターン
-  // 終盤 = distance_rate >= 66（レース進行率66%以上）
-  const latePatterns = [
-    // phase 変数による終盤判定
-    "activation_condition_raw LIKE '%phase>=2%'",
-    "activation_condition_raw LIKE '%phase==2%'",
-    "activation_condition_raw LIKE '%phase==3%'",
-    "activation_condition_raw LIKE '%phase_random==2%'",
-    // 終盤特有のコース位置
-    "activation_condition_raw LIKE '%is_finalcorner%'",
-    "activation_condition_raw LIKE '%is_last_straight%'",
-    "activation_condition_raw LIKE '%is_lastspurt%'",
-    // distance_rate による終盤判定（66%以上）
-    "activation_condition_raw LIKE '%distance_rate>=66%'",
-    "activation_condition_raw LIKE '%distance_rate>=67%'",
-    "activation_condition_raw LIKE '%distance_rate>=68%'",
-    "activation_condition_raw LIKE '%distance_rate>=69%'",
-    "activation_condition_raw LIKE '%distance_rate>=70%'",
-    "activation_condition_raw LIKE '%distance_rate>=75%'",
-    "activation_condition_raw LIKE '%distance_rate>=80%'",
-    "activation_condition_raw LIKE '%distance_rate>=85%'",
-    "activation_condition_raw LIKE '%distance_rate>=90%'",
-    "activation_condition_raw LIKE '%distance_rate>=95%'",
-    // 残り距離による終盤判定（残り400m以下は終盤相当）
-    "activation_condition_raw LIKE '%remain_distance<=400%'",
-    "activation_condition_raw LIKE '%remain_distance<=350%'",
-    "activation_condition_raw LIKE '%remain_distance<=300%'",
-    "activation_condition_raw LIKE '%remain_distance<=250%'",
-    "activation_condition_raw LIKE '%remain_distance<=200%'",
-    "activation_condition_raw LIKE '%remain_distance<=150%'",
-    "activation_condition_raw LIKE '%remain_distance<=100%'",
-    "activation_condition_raw LIKE '%remain_distance<=50%'",
-    // 終盤での追い抜き条件
-    "activation_condition_raw LIKE '%change_order_up_end_after%'",
-  ];
+  // ビット位置: 1=序盤, 2=中盤, 3=終盤
+  const phaseIndex: Record<string, number> = {
+    early: 1,
+    mid: 2,
+    late: 3,
+  };
 
   switch (phase) {
     case 'early':
-      // 序盤条件を含む（前半 distance_rate<=50 は序盤と中盤に跨る）
-      return `(
-        activation_condition_raw LIKE '%phase==0%'
-        OR activation_condition_raw LIKE '%phase_random==0%'
-        OR activation_condition_raw LIKE '%phase_laterhalf_random==0%'
-        OR activation_condition_raw LIKE '%distance_rate<=50%'
-      )`;
-
     case 'mid':
-      // 中盤条件を含む（前半・後半とも中盤に跨る）
-      return `(
-        activation_condition_raw LIKE '%phase==1%'
-        OR activation_condition_raw LIKE '%phase_random==1%'
-        OR activation_condition_raw LIKE '%phase_laterhalf_random==1%'
-        OR activation_condition_raw LIKE '%distance_rate>=50%'
-        OR activation_condition_raw LIKE '%distance_rate<=50%'
-        OR activation_condition_raw LIKE '%distance_rate_after_random==50%'
-        OR (
-          activation_condition_raw LIKE '%distance_rate>=%'
-          AND activation_condition_raw LIKE '%distance_rate<=%'
-          AND activation_condition_raw NOT LIKE '%distance_rate>=70%'
-        )
+    case 'late': {
+      const idx = phaseIndex[phase];
+      // 指定フェーズのビットが 0 のバリアントを持つスキルを除外
+      return `s.id NOT IN (
+        SELECT DISTINCT sev2.skill_id
+        FROM skill_effect_variants sev2
+        WHERE SUBSTR(sev2.phase_flags, ${idx}, 1) = '0'
       )`;
+    }
 
-    case 'late':
-      // 終盤条件を含む（後半 distance_rate>=50 は中盤と終盤に跨る）
-      return `(
-        ${latePatterns.join(' OR ')}
-        OR activation_condition_raw LIKE '%distance_rate>=50%'
+    case 'non_late':
+      // 終盤以外 = 序盤または中盤で発動可能（終盤ビットが0でもOK）
+      // ただし終盤のみのスキル（001）は除外
+      return `s.id NOT IN (
+        SELECT DISTINCT sev2.skill_id
+        FROM skill_effect_variants sev2
+        WHERE sev2.phase_flags = '001'
       )`;
 
     case 'corner':
@@ -668,13 +631,6 @@ function buildPhaseCondition(phase: PhaseType): string | null {
       return `(
         activation_condition_raw LIKE '%corner==0%'
         OR activation_condition_raw LIKE '%straight_random%'
-      )`;
-
-    case 'non_late':
-      // 終盤以外（終盤条件を含まない）
-      return `(
-        activation_condition_raw IS NULL
-        OR NOT (${latePatterns.join(' OR ')})
       )`;
 
     default:
@@ -895,6 +851,7 @@ export function advancedSearch(
         sev.distance_flags,
         sev.ground_flags,
         sev.order_flags,
+        sev.phase_flags,
         (
           SELECT GROUP_CONCAT(vp.parameter_key || ':' || vp.parameter_value, ', ')
           FROM variant_parameters vp

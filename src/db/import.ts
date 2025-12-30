@@ -420,6 +420,97 @@ function parseOrderFlags(
 }
 
 /**
+ * フェーズフラグをパース
+ * ビット位置: 1=序盤, 2=中盤, 3=終盤
+ * フェーズ定義: 序盤 0-33%, 中盤 33-66%, 終盤 66-100%
+ */
+function parsePhaseFlags(conditionRaw: string | null): string {
+  if (!conditionRaw) return '111'; // 条件なし = 全フェーズ対応
+
+  // 序盤・中盤・終盤のフラグ（true = 発動可能）
+  let early = true;
+  let mid = true;
+  let late = true;
+
+  // 終盤限定パターン（これらがあれば序盤・中盤では発動しない）
+  const lateOnlyPatterns = [
+    /phase>=2/,
+    /phase==2/,
+    /phase==3/,
+    /phase_random==2/,
+    /is_finalcorner/,
+    /is_last_straight/,
+    /is_lastspurt/,
+    /change_order_up_end_after/, // 終盤追い抜き
+  ];
+
+  // distance_rate による終盤判定（66%以上で発動開始）
+  const distanceRateLatePattern = /distance_rate>=(\d+)/g;
+  const distanceRateMatches = [...conditionRaw.matchAll(distanceRateLatePattern)];
+  for (const match of distanceRateMatches) {
+    const rate = parseInt(match[1], 10);
+    if (rate >= 66) {
+      // 66%以上で発動 = 終盤のみ
+      early = false;
+      mid = false;
+    } else if (rate >= 33) {
+      // 33%以上で発動 = 序盤では発動しない
+      early = false;
+    }
+  }
+
+  // remain_distance による終盤判定（残り400m以下は終盤相当）
+  const remainDistancePattern = /remain_distance<=(\d+)/g;
+  const remainMatches = [...conditionRaw.matchAll(remainDistancePattern)];
+  for (const match of remainMatches) {
+    const dist = parseInt(match[1], 10);
+    if (dist <= 400) {
+      // 残り400m以下 = 終盤のみ
+      early = false;
+      mid = false;
+    }
+  }
+
+  // 終盤限定パターンのチェック
+  for (const pattern of lateOnlyPatterns) {
+    if (pattern.test(conditionRaw)) {
+      early = false;
+      mid = false;
+      break;
+    }
+  }
+
+  // 序盤限定パターン
+  if (/phase==0/.test(conditionRaw) || /phase_random==0/.test(conditionRaw)) {
+    mid = false;
+    late = false;
+  }
+
+  // 中盤限定パターン
+  if (/phase==1/.test(conditionRaw) || /phase_random==1/.test(conditionRaw)) {
+    early = false;
+    late = false;
+  }
+
+  // distance_rate による序盤・中盤判定
+  const distanceRateEarlyPattern = /distance_rate<=(\d+)/g;
+  const earlyMatches = [...conditionRaw.matchAll(distanceRateEarlyPattern)];
+  for (const match of earlyMatches) {
+    const rate = parseInt(match[1], 10);
+    if (rate <= 33) {
+      // 33%以下で終了 = 序盤のみ
+      mid = false;
+      late = false;
+    } else if (rate <= 66) {
+      // 66%以下で終了 = 終盤では発動しない
+      late = false;
+    }
+  }
+
+  return `${early ? '1' : '0'}${mid ? '1' : '0'}${late ? '1' : '0'}`;
+}
+
+/**
  * 全ビットフラグをパース
  */
 function parseAllFlags(
@@ -430,6 +521,7 @@ function parseAllFlags(
   distanceFlags: string;
   groundFlags: string;
   orderFlags: string;
+  phaseFlags: string;
 } {
   // trigger と activation の両方から条件を解析
   const combinedCondition = [triggerConditionRaw, activationConditionRaw]
@@ -441,6 +533,7 @@ function parseAllFlags(
     distanceFlags: parseDistanceFlags(combinedCondition || null),
     groundFlags: parseGroundFlags(combinedCondition || null),
     orderFlags: parseOrderFlags(triggerConditionRaw, activationConditionRaw),
+    phaseFlags: parsePhaseFlags(activationConditionRaw),
   };
 }
 
@@ -459,8 +552,8 @@ function importEffectVariants(
     INSERT INTO skill_effect_variants (
       skill_id, variant_index, trigger_condition_raw, activation_condition_raw,
       activation_condition_description, effect_order, is_demerit,
-      running_style_flags, distance_flags, ground_flags, order_flags
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      running_style_flags, distance_flags, ground_flags, order_flags, phase_flags
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertParamStmt = db.prepare(`
@@ -474,7 +567,7 @@ function importEffectVariants(
     if (!skillId || !skill.effectVariants) continue;
 
     for (const variant of skill.effectVariants) {
-      // 全ビットフラグをパース（作戦・距離・バ場・順位）
+      // 全ビットフラグをパース（作戦・距離・バ場・順位・フェーズ）
       const flags = parseAllFlags(
         variant.triggerConditionRaw ?? null,
         variant.activationConditionRaw ?? null
@@ -491,7 +584,8 @@ function importEffectVariants(
         flags.runningStyleFlags,
         flags.distanceFlags,
         flags.groundFlags,
-        flags.orderFlags
+        flags.orderFlags,
+        flags.phaseFlags
       );
 
       const variantId = result.lastInsertRowid as number;
