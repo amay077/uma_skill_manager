@@ -618,6 +618,8 @@ function buildPhaseCondition(phase: PhaseType): string | null {
     "activation_condition_raw LIKE '%remain_distance<=150%'",
     "activation_condition_raw LIKE '%remain_distance<=100%'",
     "activation_condition_raw LIKE '%remain_distance<=50%'",
+    // 終盤での追い抜き条件
+    "activation_condition_raw LIKE '%change_order_up_end_after%'",
   ];
 
   switch (phase) {
