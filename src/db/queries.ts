@@ -688,55 +688,77 @@ function buildOrderRangeCondition(orderRange: OrderRange): string | null {
 
   switch (orderRange) {
     case 'top1':
-      // 1位限定（順位==1 かつ順位率条件なし）
-      return `(
-        activation_condition_raw IS NULL
-        OR (
-          activation_condition_raw NOT LIKE '%order>=2%'
-          AND activation_condition_raw NOT LIKE '%order>1%'
-          AND activation_condition_raw NOT LIKE '%order_rate>%'
-          AND activation_condition_raw NOT LIKE '%order_rate>=%'
-        )
+      // 1位限定（順位下限条件を持つバリアントが1つでもあるスキルを除外）
+      // スキルレベルでチェック: 全バリアントで順位下限条件がないこと
+      return `s.id NOT IN (
+        SELECT DISTINCT sev2.skill_id
+        FROM skill_effect_variants sev2
+        WHERE sev2.activation_condition_raw LIKE '%order>=2%'
+           OR sev2.activation_condition_raw LIKE '%order>=3%'
+           OR sev2.activation_condition_raw LIKE '%order>=4%'
+           OR sev2.activation_condition_raw LIKE '%order>=5%'
+           OR sev2.activation_condition_raw LIKE '%order>=6%'
+           OR sev2.activation_condition_raw LIKE '%order>1%'
+           OR sev2.activation_condition_raw LIKE '%order>2%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=10%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=20%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=30%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=40%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=50%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=60%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=70%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=80%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>%'
       )`;
 
     case 'top2':
-      // 1〜2位（順位率約17%以下）
-      return `(
-        activation_condition_raw IS NULL
-        OR (
-          activation_condition_raw NOT LIKE '%order>=3%'
-          AND activation_condition_raw NOT LIKE '%order>2%'
-          AND activation_condition_raw NOT LIKE '%order_rate>=20%'
-          AND activation_condition_raw NOT LIKE '%order_rate>=30%'
-          AND activation_condition_raw NOT LIKE '%order_rate>=40%'
-          AND activation_condition_raw NOT LIKE '%order_rate>=50%'
-          AND activation_condition_raw NOT LIKE '%order_rate>20%'
-        )
+      // 1〜2位（順位率約17%以下）- スキルレベルでチェック
+      return `s.id NOT IN (
+        SELECT DISTINCT sev2.skill_id
+        FROM skill_effect_variants sev2
+        WHERE sev2.activation_condition_raw LIKE '%order>=3%'
+           OR sev2.activation_condition_raw LIKE '%order>=4%'
+           OR sev2.activation_condition_raw LIKE '%order>=5%'
+           OR sev2.activation_condition_raw LIKE '%order>=6%'
+           OR sev2.activation_condition_raw LIKE '%order>2%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=20%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=30%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=40%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=50%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=60%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=70%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=80%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>20%'
       )`;
 
     case 'top4':
-      // 1〜4位（順位率約33%以下）
-      return `(
-        activation_condition_raw IS NULL
-        OR (
-          activation_condition_raw NOT LIKE '%order>=5%'
-          AND activation_condition_raw NOT LIKE '%order>4%'
-          AND activation_condition_raw NOT LIKE '%order_rate>=40%'
-          AND activation_condition_raw NOT LIKE '%order_rate>=50%'
-          AND activation_condition_raw NOT LIKE '%order_rate>40%'
-        )
+      // 1〜4位（順位率約33%以下）- スキルレベルでチェック
+      return `s.id NOT IN (
+        SELECT DISTINCT sev2.skill_id
+        FROM skill_effect_variants sev2
+        WHERE sev2.activation_condition_raw LIKE '%order>=5%'
+           OR sev2.activation_condition_raw LIKE '%order>=6%'
+           OR sev2.activation_condition_raw LIKE '%order>4%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=40%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=50%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=60%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=70%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=80%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>40%'
       )`;
 
     case 'top6':
-      // 1〜6位（順位率約50%以下）
-      return `(
-        activation_condition_raw IS NULL
-        OR (
-          activation_condition_raw NOT LIKE '%order>=7%'
-          AND activation_condition_raw NOT LIKE '%order>6%'
-          AND activation_condition_raw NOT LIKE '%order_rate>=50%'
-          AND activation_condition_raw NOT LIKE '%order_rate>50%'
-        )
+      // 1〜6位（順位率約50%以下）- スキルレベルでチェック
+      return `s.id NOT IN (
+        SELECT DISTINCT sev2.skill_id
+        FROM skill_effect_variants sev2
+        WHERE sev2.activation_condition_raw LIKE '%order>=7%'
+           OR sev2.activation_condition_raw LIKE '%order>6%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=50%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=60%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=70%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>=80%'
+           OR sev2.activation_condition_raw LIKE '%order_rate>50%'
       )`;
 
     case 'mid':
