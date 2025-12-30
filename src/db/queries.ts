@@ -506,66 +506,77 @@ export interface AdvancedSearchResult {
   is_demerit: number;
   activation_condition_raw: string | null;
   activation_condition_description: string | null;
+  running_style_flags: string;
+  distance_flags: string;
+  ground_flags: string;
+  order_flags: string;
   effect_params: string | null;
 }
 
 /**
- * 作戦条件を生成
+ * 作戦条件を生成（ビットフラグ方式）
+ * スキル内のすべてのバリアントが指定作戦に対応している必要がある
  */
 function buildRunningStyleCondition(style: RunningStyle): string | null {
   if (style === 'any') return null;
 
-  // 作戦条件なしスキルのみ
+  // 作戦条件なしスキルのみ（全作戦対応 = 1111）
   if (style === 'none') {
-    return `(
-      activation_condition_raw NOT LIKE '%running_style==%'
-      OR activation_condition_raw IS NULL
+    // スキル内のすべてのバリアントが 1111 であるスキルのみ
+    return `s.id NOT IN (
+      SELECT DISTINCT sev2.skill_id
+      FROM skill_effect_variants sev2
+      WHERE sev2.running_style_flags != '1111'
     )`;
   }
 
-  const styleMap: Record<Exclude<RunningStyle, 'any' | 'none'>, string> = {
-    nige: '1',
-    senkou: '2',
-    sashi: '3',
-    oikomi: '4',
+  // ビット位置: 1=逃げ, 2=先行, 3=差し, 4=追込
+  const styleIndex: Record<Exclude<RunningStyle, 'any' | 'none'>, number> = {
+    nige: 1,
+    senkou: 2,
+    sashi: 3,
+    oikomi: 4,
   };
 
-  const styleValue = styleMap[style];
-  // 指定作戦を含む OR 作戦条件なし
-  return `(
-    activation_condition_raw LIKE '%running_style==${styleValue}%'
-    OR activation_condition_raw NOT LIKE '%running_style==%'
-    OR activation_condition_raw IS NULL
+  const idx = styleIndex[style];
+  // 指定作戦のビットが 0 のバリアントを持つスキルを除外
+  return `s.id NOT IN (
+    SELECT DISTINCT sev2.skill_id
+    FROM skill_effect_variants sev2
+    WHERE SUBSTR(sev2.running_style_flags, ${idx}, 1) = '0'
   )`;
 }
 
 /**
- * 距離条件を生成
+ * 距離条件を生成（ビットフラグ方式）
+ * スキル内のすべてのバリアントが指定距離に対応している必要がある
  */
 function buildDistanceTypeCondition(dist: DistanceType): string | null {
   if (dist === 'any') return null;
 
-  // 距離条件なしスキルのみ
+  // 距離条件なしスキルのみ（全距離対応 = 1111）
   if (dist === 'none') {
-    return `(
-      activation_condition_raw NOT LIKE '%distance_type==%'
-      OR activation_condition_raw IS NULL
+    return `s.id NOT IN (
+      SELECT DISTINCT sev2.skill_id
+      FROM skill_effect_variants sev2
+      WHERE sev2.distance_flags != '1111'
     )`;
   }
 
-  const distMap: Record<Exclude<DistanceType, 'any' | 'none'>, string> = {
-    short: '1',
-    mile: '2',
-    middle: '3',
-    long: '4',
+  // ビット位置: 1=短距離, 2=マイル, 3=中距離, 4=長距離
+  const distIndex: Record<Exclude<DistanceType, 'any' | 'none'>, number> = {
+    short: 1,
+    mile: 2,
+    middle: 3,
+    long: 4,
   };
 
-  const distValue = distMap[dist];
-  // 指定距離を含む OR 距離条件なし
-  return `(
-    activation_condition_raw LIKE '%distance_type==${distValue}%'
-    OR activation_condition_raw NOT LIKE '%distance_type==%'
-    OR activation_condition_raw IS NULL
+  const idx = distIndex[dist];
+  // 指定距離のビットが 0 のバリアントを持つスキルを除外
+  return `s.id NOT IN (
+    SELECT DISTINCT sev2.skill_id
+    FROM skill_effect_variants sev2
+    WHERE SUBSTR(sev2.distance_flags, ${idx}, 1) = '0'
   )`;
 }
 
@@ -681,38 +692,59 @@ function buildEffectTypeCondition(effectType: EffectType): string | null {
 }
 
 /**
- * 順位条件を生成（9人立てチャンミ換算）
- * order_min/order_max カラムを使用した数値比較
+ * 順位条件を生成（9人立てチャンミ換算、ビットフラグ方式）
+ * スキル内のすべてのバリアントが指定順位に対応している必要がある
  */
 function buildOrderRangeCondition(orderRange: OrderRange): string | null {
   if (orderRange === 'any') return null;
 
-  // 9人立て換算の閾値
-  const topThresholds: Record<string, number> = {
-    top1: 1,  // 1位のみ
-    top2: 2,  // 1〜2位
-    top4: 4,  // 1〜4位
-    top6: 6,  // 1〜6位
+  // 指定順位に対応するビットパターン
+  // order_flags: 9桁（1位〜9位）
+  // topN: 1位〜N位のいずれかで発動可能であればOK
+  const topPositions: Record<string, number[]> = {
+    top1: [1],        // 1位のみ
+    top2: [1, 2],     // 1〜2位
+    top4: [1, 2, 3, 4],     // 1〜4位
+    top6: [1, 2, 3, 4, 5, 6], // 1〜6位
   };
 
-  if (orderRange in topThresholds) {
-    const maxOrder = topThresholds[orderRange];
-    // スキルレベルでチェック: order_min > maxOrder のバリアントを持つスキルを除外
+  if (orderRange in topPositions) {
+    const positions = topPositions[orderRange];
+    // 指定順位のいずれかでも発動できないバリアントを持つスキルを除外
+    // つまり、指定順位すべてのビットが0のバリアントがあればNG
+    const positionChecks = positions.map(p => `SUBSTR(sev2.order_flags, ${p}, 1) = '1'`).join(' OR ');
     return `s.id NOT IN (
       SELECT DISTINCT sev2.skill_id
       FROM skill_effect_variants sev2
-      WHERE sev2.order_min IS NOT NULL AND sev2.order_min > ${maxOrder}
+      WHERE NOT (${positionChecks})
     )`;
   }
 
   switch (orderRange) {
     case 'mid':
-      // 中団（3〜7位付近）- order_min >= 3 の条件を持つスキル
-      return `sev.order_min IS NOT NULL AND sev.order_min >= 3`;
+      // 中団（4〜6位付近）- 4〜6位のいずれかで発動可能
+      return `s.id NOT IN (
+        SELECT DISTINCT sev2.skill_id
+        FROM skill_effect_variants sev2
+        WHERE NOT (
+          SUBSTR(sev2.order_flags, 4, 1) = '1'
+          OR SUBSTR(sev2.order_flags, 5, 1) = '1'
+          OR SUBSTR(sev2.order_flags, 6, 1) = '1'
+        )
+      )`;
 
     case 'back':
-      // 後方（5位以降）- order_min >= 5 の条件を持つスキル
-      return `sev.order_min IS NOT NULL AND sev.order_min >= 5`;
+      // 後方（6位以降）- 6〜9位のいずれかで発動可能
+      return `s.id NOT IN (
+        SELECT DISTINCT sev2.skill_id
+        FROM skill_effect_variants sev2
+        WHERE NOT (
+          SUBSTR(sev2.order_flags, 6, 1) = '1'
+          OR SUBSTR(sev2.order_flags, 7, 1) = '1'
+          OR SUBSTR(sev2.order_flags, 8, 1) = '1'
+          OR SUBSTR(sev2.order_flags, 9, 1) = '1'
+        )
+      )`;
 
     default:
       return null;
@@ -720,30 +752,33 @@ function buildOrderRangeCondition(orderRange: OrderRange): string | null {
 }
 
 /**
- * バ場条件を生成
+ * バ場条件を生成（ビットフラグ方式）
+ * スキル内のすべてのバリアントが指定バ場に対応している必要がある
  */
 function buildGroundTypeCondition(groundType: GroundType): string | null {
   if (groundType === 'any') return null;
 
-  // バ場条件なしスキルのみ
+  // バ場条件なしスキルのみ（全バ場対応 = 11）
   if (groundType === 'none') {
-    return `(
-      activation_condition_raw NOT LIKE '%ground_type==%'
-      OR activation_condition_raw IS NULL
+    return `s.id NOT IN (
+      SELECT DISTINCT sev2.skill_id
+      FROM skill_effect_variants sev2
+      WHERE sev2.ground_flags != '11'
     )`;
   }
 
-  const groundMap: Record<Exclude<GroundType, 'any' | 'none'>, string> = {
-    turf: '1',
-    dirt: '2',
+  // ビット位置: 1=芝, 2=ダート
+  const groundIndex: Record<Exclude<GroundType, 'any' | 'none'>, number> = {
+    turf: 1,
+    dirt: 2,
   };
 
-  const groundValue = groundMap[groundType];
-  // 指定バ場を含む OR バ場条件なし
-  return `(
-    activation_condition_raw LIKE '%ground_type==${groundValue}%'
-    OR activation_condition_raw NOT LIKE '%ground_type==%'
-    OR activation_condition_raw IS NULL
+  const idx = groundIndex[groundType];
+  // 指定バ場のビットが 0 のバリアントを持つスキルを除外
+  return `s.id NOT IN (
+    SELECT DISTINCT sev2.skill_id
+    FROM skill_effect_variants sev2
+    WHERE SUBSTR(sev2.ground_flags, ${idx}, 1) = '0'
   )`;
 }
 
@@ -831,6 +866,10 @@ export function advancedSearch(
         sev.is_demerit,
         sev.activation_condition_raw,
         sev.activation_condition_description,
+        sev.running_style_flags,
+        sev.distance_flags,
+        sev.ground_flags,
+        sev.order_flags,
         (
           SELECT GROUP_CONCAT(vp.parameter_key || ':' || vp.parameter_value, ', ')
           FROM variant_parameters vp

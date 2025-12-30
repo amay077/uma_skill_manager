@@ -59,8 +59,11 @@ CREATE TABLE IF NOT EXISTS skill_effect_variants (
   activation_condition_description TEXT,
   effect_order INTEGER NOT NULL DEFAULT 0,
   is_demerit INTEGER NOT NULL DEFAULT 0,
-  order_min INTEGER,  -- 順位下限（9人立て換算: order>=N または order_rate>=N%）
-  order_max INTEGER,  -- 順位上限（9人立て換算: order<=N または order_rate<=N%）
+  -- ビットフラグ条件カラム
+  running_style_flags TEXT NOT NULL DEFAULT '1111',     -- 逃げ/先行/差し/追込（4桁）
+  distance_flags TEXT NOT NULL DEFAULT '1111',          -- 短距離/マイル/中距離/長距離（4桁）
+  ground_flags TEXT NOT NULL DEFAULT '11',              -- 芝/ダート（2桁）
+  order_flags TEXT NOT NULL DEFAULT '111111111',        -- 1位〜9位（9桁）
   FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE
 );
 
@@ -84,8 +87,10 @@ CREATE INDEX IF NOT EXISTS idx_effect_parameters_skill_id ON effect_parameters(s
 CREATE INDEX IF NOT EXISTS idx_effect_parameters_key ON effect_parameters(parameter_key);
 CREATE INDEX IF NOT EXISTS idx_skill_effect_variants_skill_id ON skill_effect_variants(skill_id);
 CREATE INDEX IF NOT EXISTS idx_skill_effect_variants_effect_order ON skill_effect_variants(effect_order);
-CREATE INDEX IF NOT EXISTS idx_skill_effect_variants_order_min ON skill_effect_variants(order_min);
-CREATE INDEX IF NOT EXISTS idx_skill_effect_variants_order_max ON skill_effect_variants(order_max);
+CREATE INDEX IF NOT EXISTS idx_skill_effect_variants_running_style_flags ON skill_effect_variants(running_style_flags);
+CREATE INDEX IF NOT EXISTS idx_skill_effect_variants_distance_flags ON skill_effect_variants(distance_flags);
+CREATE INDEX IF NOT EXISTS idx_skill_effect_variants_ground_flags ON skill_effect_variants(ground_flags);
+CREATE INDEX IF NOT EXISTS idx_skill_effect_variants_order_flags ON skill_effect_variants(order_flags);
 CREATE INDEX IF NOT EXISTS idx_variant_parameters_variant_id ON variant_parameters(variant_id);
 
 -- VIEW: スキル+サポカ+効果パラメータの結合ビュー

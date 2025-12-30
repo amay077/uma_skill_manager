@@ -197,101 +197,237 @@ function fixInheritedUniqueSkills(db: Database.Database): number {
   return result.changes;
 }
 
+// ============================================
+// ビットフラグパース関数
+// ============================================
+
 /**
- * 順位条件をパース（9人立て換算）
- * activation_condition_raw から order/order_rate 条件を抽出し、
- * 9人立てのチャンミ換算で order_min/order_max を返す
- * @param conditionRaw activation_condition_raw の値
- * @returns { orderMin, orderMax } - 9人立て換算の順位下限/上限
+ * 作戦条件をパース（4桁ビットフラグ）
+ * @param conditionRaw 条件文字列
+ * @returns 4桁のビットフラグ文字列（逃げ/先行/差し/追込）
  */
-function parseOrderConditions(conditionRaw: string | null): {
-  orderMin: number | null;
-  orderMax: number | null;
-} {
-  if (!conditionRaw) return { orderMin: null, orderMax: null };
+function parseRunningStyleFlags(conditionRaw: string | null): string {
+  if (!conditionRaw) return '1111';
 
-  let orderMin: number | null = null;
-  let orderMax: number | null = null;
-
-  // order==N パターン（N位限定で発動）
-  const orderEqMatch = conditionRaw.match(/order==(\d+)/);
-  if (orderEqMatch) {
-    const val = parseInt(orderEqMatch[1], 10);
-    // N位限定 = order_min も order_max も N
-    orderMin = orderMin === null ? val : Math.max(orderMin, val);
-    orderMax = orderMax === null ? val : Math.min(orderMax, val);
+  const flags = ['0', '0', '0', '0'];
+  const matches = conditionRaw.matchAll(/running_style==(\d)/g);
+  for (const match of matches) {
+    const style = parseInt(match[1], 10);
+    if (style >= 1 && style <= 4) {
+      flags[style - 1] = '1';
+    }
   }
 
-  // order>=N パターン（N位以降で発動）
-  const orderGteMatch = conditionRaw.match(/order>=(\d+)/);
-  if (orderGteMatch) {
-    const val = parseInt(orderGteMatch[1], 10);
-    orderMin = orderMin === null ? val : Math.max(orderMin, val);
-  }
-
-  // order<=N パターン（N位以内で発動）
-  const orderLteMatch = conditionRaw.match(/order<=(\d+)/);
-  if (orderLteMatch) {
-    const val = parseInt(orderLteMatch[1], 10);
-    orderMax = orderMax === null ? val : Math.min(orderMax, val);
-  }
-
-  // order_rate>=N パターン → 9人立て換算（N%以降で発動）
-  const orderRateGteMatch = conditionRaw.match(/order_rate>=(\d+)/);
-  if (orderRateGteMatch) {
-    const rate = parseInt(orderRateGteMatch[1], 10);
-    const converted = Math.ceil(rate / 100 * 9);
-    orderMin = orderMin === null ? converted : Math.max(orderMin, converted);
-  }
-
-  // order_rate<=N パターン → 9人立て換算（N%以内で発動）
-  const orderRateLteMatch = conditionRaw.match(/order_rate<=(\d+)/);
-  if (orderRateLteMatch) {
-    const rate = parseInt(orderRateLteMatch[1], 10);
-    const converted = Math.ceil(rate / 100 * 9);
-    orderMax = orderMax === null ? converted : Math.min(orderMax, converted);
-  }
-
-  // order_rate>N パターン → 9人立て換算（N%超過で発動）
-  // ">=" ではなく ">" のみを検出するため、否定先読みを使用
-  const orderRateGtMatch = conditionRaw.match(/order_rate>(\d+)(?!=)/);
-  if (orderRateGtMatch) {
-    const rate = parseInt(orderRateGtMatch[1], 10);
-    // N%超過 = (N+1)%以上と同等
-    const converted = Math.ceil((rate + 1) / 100 * 9);
-    orderMin = orderMin === null ? converted : Math.max(orderMin, converted);
-  }
-
-  // order_rate_inN_continue パターン → 上位N%維持で発動
-  const orderRateInMatch = conditionRaw.match(/order_rate_in(\d+)_continue/);
-  if (orderRateInMatch) {
-    const rate = parseInt(orderRateInMatch[1], 10);
-    const converted = Math.ceil(rate / 100 * 9);
-    orderMax = orderMax === null ? converted : Math.min(orderMax, converted);
-  }
-
-  return { orderMin, orderMax };
+  // 1つもマッチしなければ全作戦対応
+  return flags.includes('1') ? flags.join('') : '1111';
 }
 
 /**
- * 固有スキルの順位条件をデフォルト設定
- * 順位条件がない固有スキルには order_min=1, order_max=9 を設定
- * @param subType スキルのサブタイプ
- * @param orderMin パース結果のorder_min
- * @param orderMax パース結果のorder_max
- * @returns デフォルト適用後の順位条件
+ * 距離条件をパース（4桁ビットフラグ）
+ * @param conditionRaw 条件文字列
+ * @returns 4桁のビットフラグ文字列（短距離/マイル/中距離/長距離）
  */
-function applyDefaultOrderForUnique(
-  subType: string,
-  orderMin: number | null,
-  orderMax: number | null
-): { orderMin: number | null; orderMax: number | null } {
-  // 固有スキルまたは継承固有スキルの場合、順位条件がなければデフォルトを設定
-  if ((subType === 'unique' || subType === 'inherited_unique') &&
-      orderMin === null && orderMax === null) {
-    return { orderMin: 1, orderMax: 9 };
+function parseDistanceFlags(conditionRaw: string | null): string {
+  if (!conditionRaw) return '1111';
+
+  // 距離境界値
+  const SHORT_MAX = 1599;
+  const MILE_MIN = 1600;
+  const MILE_MAX = 1999;
+  const MIDDLE_MIN = 2000;
+  const MIDDLE_MAX = 2499;
+  const LONG_MIN = 2500;
+
+  // デフォルトは全距離対応
+  let flags = [true, true, true, true]; // [短距離, マイル, 中距離, 長距離]
+
+  // course_distance の条件をパース
+  // course_distance<N → N未満
+  const ltMatch = conditionRaw.match(/course_distance<(\d+)(?!=)/);
+  if (ltMatch) {
+    const val = parseInt(ltMatch[1], 10);
+    if (val <= MILE_MIN) flags = [true, false, false, false];
+    else if (val <= MIDDLE_MIN) flags = [true, true, false, false];
+    else if (val <= LONG_MIN) flags = [true, true, true, false];
   }
-  return { orderMin, orderMax };
+
+  // course_distance<=N → N以下
+  const lteMatch = conditionRaw.match(/course_distance<=(\d+)/);
+  if (lteMatch) {
+    const val = parseInt(lteMatch[1], 10);
+    if (val < MILE_MIN) flags = [true, false, false, false];
+    else if (val < MIDDLE_MIN) flags = [true, true, false, false];
+    else if (val < LONG_MIN) flags = [true, true, true, false];
+  }
+
+  // course_distance>N → N超過
+  const gtMatch = conditionRaw.match(/course_distance>(\d+)(?!=)/);
+  if (gtMatch) {
+    const val = parseInt(gtMatch[1], 10);
+    if (val >= MIDDLE_MAX) flags = [false, false, false, true];
+    else if (val >= MILE_MAX) flags = [false, false, true, true];
+    else if (val >= SHORT_MAX) flags = [false, true, true, true];
+  }
+
+  // course_distance>=N → N以上
+  const gteMatch = conditionRaw.match(/course_distance>=(\d+)/);
+  if (gteMatch) {
+    const val = parseInt(gteMatch[1], 10);
+    if (val > MIDDLE_MAX) flags = [false, false, false, true];
+    else if (val > MILE_MAX) flags = [false, false, true, true];
+    else if (val > SHORT_MAX) flags = [false, true, true, true];
+  }
+
+  return flags.map(f => f ? '1' : '0').join('');
+}
+
+/**
+ * バ場条件をパース（2桁ビットフラグ）
+ * @param conditionRaw 条件文字列
+ * @returns 2桁のビットフラグ文字列（芝/ダート）
+ */
+function parseGroundFlags(conditionRaw: string | null): string {
+  if (!conditionRaw) return '11';
+
+  const flags = ['0', '0'];
+  const matches = conditionRaw.matchAll(/ground==(\d)/g);
+  for (const match of matches) {
+    const ground = parseInt(match[1], 10);
+    if (ground >= 1 && ground <= 2) {
+      flags[ground - 1] = '1';
+    }
+  }
+
+  // 1つもマッチしなければ全バ場対応
+  return flags.includes('1') ? flags.join('') : '11';
+}
+
+/**
+ * 順位条件をパース（9桁ビットフラグ）
+ * @param triggerConditionRaw trigger_condition_raw の値
+ * @param activationConditionRaw activation_condition_raw の値
+ * @returns 9桁のビットフラグ文字列（1位〜9位）
+ */
+function parseOrderFlags(
+  triggerConditionRaw: string | null,
+  activationConditionRaw: string | null
+): string {
+  // デフォルトは全順位対応
+  const flags = [true, true, true, true, true, true, true, true, true];
+
+  const parseFromCondition = (conditionRaw: string) => {
+    // order==N パターン（N位限定で発動）
+    const orderEqMatch = conditionRaw.match(/order==(\d+)/);
+    if (orderEqMatch) {
+      const val = parseInt(orderEqMatch[1], 10);
+      for (let i = 0; i < 9; i++) {
+        flags[i] = (i + 1) === val;
+      }
+      return;
+    }
+
+    // order>=N パターン（N位以降で発動）
+    const orderGteMatch = conditionRaw.match(/order>=(\d+)/);
+    if (orderGteMatch) {
+      const val = parseInt(orderGteMatch[1], 10);
+      for (let i = 0; i < val - 1 && i < 9; i++) {
+        flags[i] = false;
+      }
+    }
+
+    // order<=N パターン（N位以内で発動）
+    const orderLteMatch = conditionRaw.match(/order<=(\d+)/);
+    if (orderLteMatch) {
+      const val = parseInt(orderLteMatch[1], 10);
+      for (let i = val; i < 9; i++) {
+        flags[i] = false;
+      }
+    }
+
+    // order_rate>=N パターン → 9人立て換算
+    const orderRateGteMatch = conditionRaw.match(/order_rate>=(\d+)/);
+    if (orderRateGteMatch) {
+      const rate = parseInt(orderRateGteMatch[1], 10);
+      const converted = Math.ceil(rate / 100 * 9);
+      for (let i = 0; i < converted - 1 && i < 9; i++) {
+        flags[i] = false;
+      }
+    }
+
+    // order_rate<=N パターン → 9人立て換算
+    const orderRateLteMatch = conditionRaw.match(/order_rate<=(\d+)/);
+    if (orderRateLteMatch) {
+      const rate = parseInt(orderRateLteMatch[1], 10);
+      const converted = Math.ceil(rate / 100 * 9);
+      for (let i = converted; i < 9; i++) {
+        flags[i] = false;
+      }
+    }
+
+    // order_rate>N パターン → 9人立て換算
+    const orderRateGtMatch = conditionRaw.match(/order_rate>(\d+)(?!=)/);
+    if (orderRateGtMatch) {
+      const rate = parseInt(orderRateGtMatch[1], 10);
+      const converted = Math.ceil((rate + 1) / 100 * 9);
+      for (let i = 0; i < converted - 1 && i < 9; i++) {
+        flags[i] = false;
+      }
+    }
+
+    // order_rate_inN_continue パターン → 上位N%維持で発動
+    const orderRateInMatch = conditionRaw.match(/order_rate_in(\d+)_continue/);
+    if (orderRateInMatch) {
+      const rate = parseInt(orderRateInMatch[1], 10);
+      const converted = Math.ceil(rate / 100 * 9);
+      for (let i = converted; i < 9; i++) {
+        flags[i] = false;
+      }
+    }
+
+    // order_rate_outN_continue パターン → N%より後ろを維持で発動
+    const orderRateOutMatch = conditionRaw.match(/order_rate_out(\d+)_continue/);
+    if (orderRateOutMatch) {
+      const rate = parseInt(orderRateOutMatch[1], 10);
+      const converted = Math.ceil(rate / 100 * 9) + 1;
+      for (let i = 0; i < converted - 1 && i < 9; i++) {
+        flags[i] = false;
+      }
+    }
+  };
+
+  if (triggerConditionRaw) {
+    parseFromCondition(triggerConditionRaw);
+  }
+  if (activationConditionRaw) {
+    parseFromCondition(activationConditionRaw);
+  }
+
+  return flags.map(f => f ? '1' : '0').join('');
+}
+
+/**
+ * 全ビットフラグをパース
+ */
+function parseAllFlags(
+  triggerConditionRaw: string | null,
+  activationConditionRaw: string | null
+): {
+  runningStyleFlags: string;
+  distanceFlags: string;
+  groundFlags: string;
+  orderFlags: string;
+} {
+  // trigger と activation の両方から条件を解析
+  const combinedCondition = [triggerConditionRaw, activationConditionRaw]
+    .filter(Boolean)
+    .join('&');
+
+  return {
+    runningStyleFlags: parseRunningStyleFlags(triggerConditionRaw),
+    distanceFlags: parseDistanceFlags(combinedCondition || null),
+    groundFlags: parseGroundFlags(combinedCondition || null),
+    orderFlags: parseOrderFlags(triggerConditionRaw, activationConditionRaw),
+  };
 }
 
 /**
@@ -308,8 +444,9 @@ function importEffectVariants(
   const insertVariantStmt = db.prepare(`
     INSERT INTO skill_effect_variants (
       skill_id, variant_index, trigger_condition_raw, activation_condition_raw,
-      activation_condition_description, effect_order, is_demerit, order_min, order_max
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      activation_condition_description, effect_order, is_demerit,
+      running_style_flags, distance_flags, ground_flags, order_flags
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertParamStmt = db.prepare(`
@@ -323,13 +460,10 @@ function importEffectVariants(
     if (!skillId || !skill.effectVariants) continue;
 
     for (const variant of skill.effectVariants) {
-      // 順位条件をパース（9人立て換算）
-      const parsed = parseOrderConditions(variant.activationConditionRaw ?? null);
-      // 固有スキルには順位条件のデフォルトを適用
-      const { orderMin, orderMax } = applyDefaultOrderForUnique(
-        skill.subType,
-        parsed.orderMin,
-        parsed.orderMax
+      // 全ビットフラグをパース（作戦・距離・バ場・順位）
+      const flags = parseAllFlags(
+        variant.triggerConditionRaw ?? null,
+        variant.activationConditionRaw ?? null
       );
 
       const result = insertVariantStmt.run(
@@ -340,8 +474,10 @@ function importEffectVariants(
         variant.activationConditionDescription ?? null,
         variant.effectOrder,
         variant.isDemerit ? 1 : 0,
-        orderMin,
-        orderMax
+        flags.runningStyleFlags,
+        flags.distanceFlags,
+        flags.groundFlags,
+        flags.orderFlags
       );
 
       const variantId = result.lastInsertRowid as number;
@@ -403,17 +539,6 @@ export function importToDatabase(
 
       // 継承固有スキルの事後修正
       const inheritedUniqueFixedCount = fixInheritedUniqueSkills(db);
-
-      // 継承固有スキルのバリアントに順位条件のデフォルトを設定
-      db.prepare(`
-        UPDATE skill_effect_variants
-        SET order_min = 1, order_max = 9
-        WHERE skill_id IN (
-          SELECT id FROM skills WHERE sub_type = 'inherited_unique'
-        )
-        AND order_min IS NULL
-        AND order_max IS NULL
-      `).run();
 
       // 件数を取得
       const supportCardCount = db.prepare('SELECT COUNT(*) as count FROM support_cards').get() as { count: number };

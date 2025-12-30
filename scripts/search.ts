@@ -108,7 +108,7 @@ if (values['sub-type']) {
     : subTypes as AdvancedSearchOptions['skillSubType'];
 }
 if (values.name) {
-  options.skillName = values.name;
+  options.name = values.name;
 }
 if (values['exclude-demerit']) {
   options.excludeDemerit = true;
@@ -193,30 +193,41 @@ const subTypeDisplayMap: Record<string, string> = {
   unique: '固有', inherited_unique: '継承固有', gold: '金', normal: '白', evolution: '進化'
 };
 
-// 順位条件を抽出
-function extractOrderCondition(raw: string | null): string {
-  if (!raw) return '-';
-  const orderMatch = raw.match(/order(?:_rate)?[<>=]+\d+/g);
-  if (!orderMatch) return '-';
-  const conds = orderMatch.map(m => {
-    if (m.includes('order_rate')) {
-      const val = m.match(/\d+/)?.[0];
-      if (m.includes('<=')) {
-        return `〜${Math.ceil(Number(val) / 100 * 12)}位`;
-      }
-      if (m.includes('>=')) {
-        return `${Math.ceil(Number(val) / 100 * 12)}位〜`;
-      }
+// 順位条件を抽出（order_flags から生成）
+function formatOrderCondition(orderFlags: string): string {
+  if (!orderFlags || orderFlags === '111111111') return '-';
+
+  // 1が立っている位置を収集
+  const positions: number[] = [];
+  for (let i = 0; i < orderFlags.length && i < 9; i++) {
+    if (orderFlags[i] === '1') {
+      positions.push(i + 1);
     }
-    const num = Number(m.match(/\d+/)?.[0]);
-    if (m.includes('order==')) return `${num}位`;
-    if (m.includes('order>=')) return `${num}位〜`;
-    if (m.includes('order<=')) return `1〜${num}位`;
-    return m;
-  });
-  // 重複を除去
-  const unique = [...new Set(conds)];
-  return unique.join(', ');
+  }
+
+  if (positions.length === 0) return '-';
+  if (positions.length === 9) return '-';
+
+  // 連続している場合は範囲表示
+  const min = Math.min(...positions);
+  const max = Math.max(...positions);
+
+  // すべて連続しているか確認
+  const isContiguous = positions.length === max - min + 1;
+
+  if (isContiguous) {
+    if (min === max) return `${min}位`;
+    if (min === 1) return `1〜${max}位`;
+    if (max === 9) return `${min}位〜`;
+    return `${min}〜${max}位`;
+  }
+
+  // 連続していない場合は個別表示（最大3つまで）
+  if (positions.length <= 3) {
+    return positions.map(p => `${p}位`).join('/');
+  }
+
+  return `${min}〜${max}位`;
 }
 
 // タイムスタンプ生成（YYYYMMDDHHmm）
@@ -351,7 +362,7 @@ let no = 0;
 for (const r of uniqueResults) {
   no++;
   const ep = parseEffectParams(r.effect_params);
-  const orderCond = extractOrderCondition(r.activation_condition_raw);
+  const orderCond = formatOrderCondition(r.order_flags);
   const condText = r.description || '-';
   const subType = subTypeDisplayMap[r.skill_sub_type] || r.skill_sub_type;
   output(
