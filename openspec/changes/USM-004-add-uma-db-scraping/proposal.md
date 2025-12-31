@@ -33,3 +33,7 @@ E2E ライブラリ（Playwright）でスクリプト化することで、コマ
 - **Affected specs**: なし（新規機能）
 - **Affected code**: `scraping/` ディレクトリ以下に新規作成
 - **Breaking changes**: なし
+
+## References
+
+- [uma-db-search-procedure.md](./references/uma-db-search-procedure.md) - MCP 手動操作時の手順書（CSS セレクタ、DOM 構造、抽出スクリプトの参考資料）
