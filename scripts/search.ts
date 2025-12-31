@@ -242,7 +242,10 @@ function getTimestamp(): string {
 }
 
 // 出力先の決定（--output 指定時はファイル出力）
-const outputPath = values.output;
+// -O のみ指定（値なし）の場合はデフォルトパスを使用
+const outputPath = values.output === true
+  ? 'results/skill-search.md'
+  : (typeof values.output === 'string' ? values.output : undefined);
 let outputLines: string[] = [];
 
 function output(line: string): void {
