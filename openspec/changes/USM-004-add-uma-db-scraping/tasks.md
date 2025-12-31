@@ -13,11 +13,12 @@
 
 ## クライアント実装
 
-- [ ] `src/uma-db/client.ts` - ブラウザ操作クラス
-  - ページ遷移
-  - 広告ダイアログ処理
-  - 検索条件設定（白因子合計数、G1勝数、検索件数）
-  - スキル選択・検索実行
+- [ ] `src/uma-db/client.ts` - UmaDbClient クラス作成
+- [ ] launch() - ブラウザ起動・ページ遷移
+- [ ] dismissAdDialog() - 広告ダイアログ処理
+- [ ] setSearchConditions() - 検索条件設定（白因子合計数、G1勝数、検索件数）
+- [ ] searchSkill() - スキル選択・検索実行
+- [ ] close() - ブラウザ終了
 - [ ] `src/uma-db/extractor.ts` - 結果テーブルから因子情報を抽出
 
 ## CLI・出力

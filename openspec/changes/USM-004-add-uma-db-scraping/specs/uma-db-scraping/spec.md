@@ -44,6 +44,12 @@
 - **WHEN** searchSkill("しゃかりき") を呼び出す
 - **THEN** 白因子（共通スキル）セクションでスキルを選択し、検索を実行する
 
+#### Scenario: Page load timeout（ページ読み込みタイムアウト）
+
+- **GIVEN** ブラウザが起動している
+- **WHEN** ページ読み込みが 30 秒以内に完了しない
+- **THEN** タイムアウトエラーをスローする
+
 ### Requirement: Result Extraction（結果抽出）
 
 システムは検索結果テーブルから因子情報を抽出できなければならない（MUST provide）。
@@ -60,6 +66,12 @@
   - 白因子数
   - 代表因子数
   - 検索対象スキルの因子値
+
+#### Scenario: No results found（検索結果 0 件）
+
+- **GIVEN** 検索が実行された
+- **WHEN** 検索結果が 0 件の場合
+- **THEN** 空の配列を返す
 
 ### Requirement: Markdown Output（Markdown 出力）
 
