@@ -24,6 +24,7 @@
 ## CLI・出力
 
 - [ ] `src/search.ts` - CLI エントリポイント（引数パース、実行制御）
+- [ ] --interactive オプション - ユーザー介入待機機能
 - [ ] `src/utils/output.ts` - Markdown 形式で結果出力
 
 ## 動作確認

@@ -28,6 +28,13 @@
 - **WHEN** `--white-factor 40 --g1-wins 20 --limit 100` を指定して実行する
 - **THEN** 指定した条件で検索が実行される
 
+#### Scenario: Interactive mode（インタラクティブモード）
+
+- **GIVEN** `--interactive` オプションを指定して実行する
+- **WHEN** ブラウザでページが表示された後
+- **THEN** 「検索条件を設定してください。完了したら Enter を押してください...」と表示し、ユーザーの Enter 入力を待機する
+- **AND** Enter 入力後にスキル検索を実行する
+
 ### Requirement: Browser Automation（ブラウザ自動化）
 
 システムは Playwright でウマ娘 DB を操作できなければならない（MUST provide）。
