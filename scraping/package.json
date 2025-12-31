@@ -1,0 +1,22 @@
+{
+  "name": "uma-db-scraping",
+  "version": "0.1.0",
+  "description": "ウマ娘 DB フレンド検索スクレイピング",
+  "type": "module",
+  "main": "src/search.ts",
+  "scripts": {
+    "search": "npx tsx src/search.ts",
+    "typecheck": "npx tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "tsx": "^4.6.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "playwright": "^1.40.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

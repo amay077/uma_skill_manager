@@ -4,6 +4,10 @@
 
 ウマ娘 DB（https://uma.pure-db.com/#/search）でのフレンド検索を Playwright で自動化し、検索結果を詳細な因子情報テーブルとして出力する。
 
+## Assumptions（前提条件）
+
+- **広告の手動対応**: サイトには全面広告（30 秒程度）が表示されることがある。広告表示時はユーザーが手動で閉じる必要がある（自動化対象外）。
+
 ## ADDED Requirements
 
 ### Requirement: CLI Interface（CLI インターフェース）
