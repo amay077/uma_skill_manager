@@ -52,6 +52,12 @@ export interface SkillSearchResult {
   skillName: string;
   /** 検索結果一覧 */
   results: SearchResult[];
-  /** 検索結果の総件数（ページネーション前） */
+  /** 検索結果の総件数（採用した条件での件数、100件以上の場合あり） */
   totalCount: number;
+  /** 採用した白因子下限値（100件以上だった条件、結果取得に使用） */
+  actualWhiteFactor: number;
+  /** 100件未満になった白因子下限値（探索終了時の条件） */
+  finalWhiteFactor: number;
+  /** 100件未満になった時の結果件数 */
+  finalCount: number;
 }

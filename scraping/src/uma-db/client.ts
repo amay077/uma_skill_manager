@@ -16,6 +16,12 @@ const PAGE_LOAD_WAIT = 3000;
 /** 操作間の待機時間（ミリ秒） */
 const ACTION_WAIT = 500;
 
+/** 白因子下限の増加幅 */
+const WHITE_FACTOR_INCREMENT = 5;
+
+/** 検索結果の上限（この件数以上で動的調整を実行。サイトは最大100件までしか表示しない） */
+const RESULT_LIMIT_THRESHOLD = 100;
+
 /**
  * ウマ娘 DB クライアントクラス
  */
@@ -183,6 +189,14 @@ export class UmaDbClient {
   }
 
   /**
+   * 白因子合計数の条件を更新する（動的調整用）
+   * @param value 新しい白因子下限値
+   */
+  async updateWhiteFactorCondition(value: number): Promise<void> {
+    await this.setWhiteFactorCondition(value);
+  }
+
+  /**
    * G1勝数の条件を設定
    */
   private async setG1WinsCondition(value: number): Promise<void> {
@@ -242,7 +256,7 @@ export class UmaDbClient {
   }
 
   /**
-   * スキルを検索する
+   * スキルを検索する（動的白因子調整対応）
    * @param skillName 検索するスキル名
    * @returns 検索結果
    */
@@ -252,6 +266,18 @@ export class UmaDbClient {
     }
 
     console.log(`\n「${skillName}」を検索中...`);
+
+    // 現在の白因子下限値（初期値）
+    let currentWhiteFactor = this.options.whiteFactor ?? 30;
+    let totalCount = 0;
+
+    // 採用する条件を保持（100件以上だった最後の条件）
+    let adoptedWhiteFactor = currentWhiteFactor;
+    let adoptedCount = 0;
+
+    // 初回検索: スキル入力・選択・検索実行
+    // 白因子条件を初期値にリセット（前回のスキル検索で変更されている可能性があるため）
+    await this.updateWhiteFactorCondition(currentWhiteFactor);
 
     // 既存の白因子行を削除（ある場合）
     await this.clearWhiteFactorRows();
@@ -283,16 +309,58 @@ export class UmaDbClient {
     // 検索を実行
     await this.executeSearch();
 
+    // 結果件数を取得
+    totalCount = await extractResultCount(this.page);
+    console.log(`[searchSkill] 検索結果: ${totalCount} 件（白因子下限: ${currentWhiteFactor}）`);
+
+    // 動的調整ループ: 結果が100件以上の場合は白因子下限を+5して再検索
+    while (totalCount >= RESULT_LIMIT_THRESHOLD) {
+      // 100件以上の条件を採用候補として保持
+      adoptedWhiteFactor = currentWhiteFactor;
+      adoptedCount = totalCount;
+
+      console.log(`[searchSkill] 結果が ${RESULT_LIMIT_THRESHOLD} 件以上です。白因子下限を調整します...`);
+      currentWhiteFactor += WHITE_FACTOR_INCREMENT;
+
+      // 白因子条件を更新して再検索
+      await this.updateWhiteFactorCondition(currentWhiteFactor);
+      await this.executeSearch();
+
+      // 結果件数を再取得
+      totalCount = await extractResultCount(this.page);
+      console.log(`[searchSkill] 検索結果: ${totalCount} 件（白因子下限: ${currentWhiteFactor}）`);
+    }
+
+    // 100件未満になった条件を記録
+    const finalWhiteFactor = currentWhiteFactor;
+    const finalCount = totalCount;
+
+    // 採用する条件を決定
+    // - 初回から100件未満の場合: その条件を採用
+    // - 100件以上→100件未満になった場合: 一つ前の条件（100件以上だった条件）を採用
+    if (adoptedCount === 0) {
+      // 初回から100件未満だった場合
+      adoptedWhiteFactor = currentWhiteFactor;
+      adoptedCount = totalCount;
+    } else {
+      // 一つ前の条件で再検索して結果を取得
+      console.log(`[searchSkill] 採用条件（白因子下限: ${adoptedWhiteFactor}）で再検索...`);
+      await this.updateWhiteFactorCondition(adoptedWhiteFactor);
+      await this.executeSearch();
+    }
+
     // 結果を抽出（ページングあり）
     const allResults = await this.extractAllPagesResults([skillName]);
-    const totalCount = await extractResultCount(this.page);
 
-    console.log(`検索完了: ${totalCount} 件中 ${allResults.length} 件を取得`);
+    console.log(`検索完了: ${adoptedCount} 件中 ${allResults.length} 件を取得（採用白因子下限: ${adoptedWhiteFactor}、探索終了白因子下限: ${finalWhiteFactor}）`);
 
     return {
       skillName,
       results: allResults,
-      totalCount,
+      totalCount: adoptedCount,
+      actualWhiteFactor: adoptedWhiteFactor,
+      finalWhiteFactor,
+      finalCount,
     };
   }
 

@@ -87,6 +87,12 @@ export function outputMarkdown(
   lines.push(`- **検索件数上限**: ${options.limit ?? 100}`);
   lines.push('');
 
+  // スキル別 白因子合計数下限テーブル
+  lines.push('### スキル別 白因子合計数下限');
+  lines.push('');
+  lines.push(generateSkillWhiteFactorTable(skillResults));
+  lines.push('');
+
   // ユーザー別サマリ（スキル数に関係なく常に表示、スキル毎の結果より先に表示）
   lines.push('## ユーザー別サマリ');
   lines.push('');
@@ -108,6 +114,42 @@ export function outputMarkdown(
 
   console.log(`結果を ${filepath} に出力しました`);
   return filepath;
+}
+
+/**
+ * スキル別 白因子合計数下限テーブルを生成
+ */
+function generateSkillWhiteFactorTable(skillResults: SkillSearchResult[]): string {
+  if (skillResults.length === 0) {
+    return '*データがありません*';
+  }
+
+  // ヘッダー行（スキル名が列）
+  const skillNames = skillResults.map((r) => r.skillName);
+  const header = `| スキル | ${skillNames.join(' | ')} |`;
+
+  // 区切り行
+  const separatorParts = ['---'];
+  skillNames.forEach(() => separatorParts.push('---'));
+  const separator = `| ${separatorParts.join(' | ')} |`;
+
+  // 白因子合計数下限行（100件未満になった条件）
+  const finalWhiteFactorValues = skillResults.map((r) => r.finalWhiteFactor.toString());
+  const finalWhiteFactorRow = `| 白因子合計数下限 | ${finalWhiteFactorValues.join(' | ')} |`;
+
+  // 結果件数行（100件未満になった件数）
+  const finalCountValues = skillResults.map((r) => r.finalCount.toString());
+  const finalCountRow = `| 結果件数 | ${finalCountValues.join(' | ')} |`;
+
+  // 白因子合計数下限(採用値)行
+  const adoptedWhiteFactorValues = skillResults.map((r) => r.actualWhiteFactor.toString());
+  const adoptedWhiteFactorRow = `| 白因子合計数下限(採用値) | ${adoptedWhiteFactorValues.join(' | ')} |`;
+
+  // 結果件数(採用値)行
+  const adoptedCountValues = skillResults.map((r) => r.totalCount.toString());
+  const adoptedCountRow = `| 結果件数(採用値) | ${adoptedCountValues.join(' | ')} |`;
+
+  return [header, separator, finalWhiteFactorRow, finalCountRow, adoptedWhiteFactorRow, adoptedCountRow].join('\n');
 }
 
 /**
