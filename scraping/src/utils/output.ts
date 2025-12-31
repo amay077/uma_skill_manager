@@ -158,15 +158,15 @@ function generateUserSummary(skillResults: SkillSearchResult[]): string {
 
   const skillNames = skillResults.map((r) => r.skillName);
 
-  // ヘッダー行（網羅率列を追加）
-  const header = `| ユーザーID | 網羅率 | 青因子（代表/祖） | 赤因子（代表/祖） | 緑因子（代表/祖） | 白因子数 | 代表因子数 | ${skillNames.join(' | ')} |`;
+  // ヘッダー行（網羅率・代表網羅率列を追加）
+  const header = `| ユーザーID | 網羅率 | 代表網羅率 | 青因子（代表/祖） | 赤因子（代表/祖） | 緑因子（代表/祖） | 白因子数 | 代表因子数 | ${skillNames.join(' | ')} |`;
 
   // 区切り行
-  const separatorParts = ['---', '---', '---', '---', '---', '---', '---'];
+  const separatorParts = ['---', '---', '---', '---', '---', '---', '---', '---'];
   skillNames.forEach(() => separatorParts.push('---'));
   const separator = `| ${separatorParts.join(' | ')} |`;
 
-  // 網羅率を計算する関数
+  // 網羅率を計算する関数（値が「-」でないスキルの割合）
   const calcCoverageRate = (skills: Record<string, string>): string => {
     const totalSkills = skillNames.length;
     const coveredSkills = skillNames.filter((name) => {
@@ -175,6 +175,17 @@ function generateUserSummary(skillResults: SkillSearchResult[]): string {
     }).length;
     const rate = (coveredSkills / totalSkills) * 100;
     return `${coveredSkills}/${totalSkills} (${rate.toFixed(1)}%)`;
+  };
+
+  // 代表網羅率を計算する関数（「代表」を含むスキルの割合）
+  const calcDaihyoCoverageRate = (skills: Record<string, string>): string => {
+    const totalSkills = skillNames.length;
+    const daihyoSkills = skillNames.filter((name) => {
+      const value = skills[name];
+      return value && value.includes('代表');
+    }).length;
+    const rate = (daihyoSkills / totalSkills) * 100;
+    return `${daihyoSkills}/${totalSkills} (${rate.toFixed(1)}%)`;
   };
 
   // データ行（検索スキルの因子数合計の降順でソート）
@@ -208,8 +219,9 @@ function generateUserSummary(skillResults: SkillSearchResult[]): string {
 
   for (const [userId, userData] of entries) {
     const coverageRate = calcCoverageRate(userData.skills);
+    const daihyoCoverageRate = calcDaihyoCoverageRate(userData.skills);
     const values = skillNames.map((name) => userData.skills[name] || '-').join(' | ');
-    rows.push(`| ${userId} | ${coverageRate} | ${formatFactorInfo(userData.blueFactor)} | ${formatFactorInfo(userData.redFactor)} | ${formatFactorInfo(userData.greenFactor)} | ${userData.whiteFactorCount} | ${userData.daihyoCount} | ${values} |`);
+    rows.push(`| ${userId} | ${coverageRate} | ${daihyoCoverageRate} | ${formatFactorInfo(userData.blueFactor)} | ${formatFactorInfo(userData.redFactor)} | ${formatFactorInfo(userData.greenFactor)} | ${userData.whiteFactorCount} | ${userData.daihyoCount} | ${values} |`);
   }
 
   return [header, separator, ...rows].join('\n');
