@@ -136,7 +136,7 @@ npm install
 - [ ] 所持/未所持スキルの一覧表示
 - [ ] スキル取得優先度の分析
 
-## ディレクトリ構成（予定）
+## ディレクトリ構成
 
 ```
 uma/
@@ -144,6 +144,9 @@ uma/
 ├── package.json
 ├── assets/
 │   └── umasim_skill.txt  # データソース（手動更新）
+├── scraping/             # ウマ娘 DB スクレイピングツール
+│   ├── README.md         # 詳細な使い方
+│   └── src/
 ├── src/
 │   ├── parser/           # データパーサー
 │   ├── db/               # SQLite 関連
@@ -152,6 +155,30 @@ uma/
 │   └── uma.db            # SQLite データベース
 └── tests/
 ```
+
+## ウマ娘 DB スクレイピングツール
+
+[ウマ娘 DB](https://uma.pure-db.com/#/search) のフレンド検索を自動化するツール。
+
+### 機能
+
+- 複数スキルの一括検索
+- ページネーション対応（最大 100 件取得）
+- ユーザー別サマリ（網羅率・代表網羅率付き）
+- Markdown 形式での結果出力
+
+### クイックスタート
+
+```bash
+cd scraping
+npm install
+npx playwright install chromium
+
+# スキル検索
+npx tsx src/search.ts --skill "しゃかりき" --skill "アオハル点火・速"
+```
+
+詳細は [scraping/README.md](./scraping/README.md) を参照。
 
 ## 開発ロードマップ
 
