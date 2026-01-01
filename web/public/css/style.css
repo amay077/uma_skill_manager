@@ -295,7 +295,34 @@ body {
 
 .skill-type.unique { background-color: #e91e63; }
 .skill-type.evolution { background-color: #9c27b0; }
+.skill-type.inherited-unique { background-color: #ff9800; }
 .skill-type.normal { background-color: #607d8b; }
+
+.skill-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.skill-effect,
+.skill-duration {
+  font-size: 0.75rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+.skill-effect {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
+.skill-duration {
+  background-color: #f3e5f5;
+  color: #7b1fa2;
+}
 
 .skill-eval {
   font-size: 0.875rem;
@@ -445,6 +472,18 @@ body {
 }
 
 /* Responsive */
+/* Order Checkboxes (9 items in a row) */
+.order-checkboxes {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 0.25rem;
+}
+
+.order-checkboxes label {
+  justify-content: center;
+  font-size: 0.875rem;
+}
+
 @media (max-width: 767px) {
   .header h1 {
     font-size: 1.25rem;
@@ -467,5 +506,14 @@ body {
   .checkbox-group {
     flex-direction: column;
     gap: 0.25rem;
+  }
+
+  .order-checkboxes {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.25rem;
+  }
+
+  .order-checkboxes label {
+    flex-direction: row;
   }
 }

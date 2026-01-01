@@ -8,7 +8,7 @@
 import { initDatabase } from './db/init.js';
 import { advancedSearch, countAdvancedSearch } from './db/queries.js';
 import { PAGINATION } from './db/constants.js';
-import { getFormValues, clearForm, toggleAdvancedPanel, setupFormListeners } from './components/SearchForm.js';
+import { getFormValues, clearForm, setupFormListeners } from './components/SearchForm.js';
 import { renderSkillCards } from './components/SkillCard.js';
 import { renderPagination, updateResultsCount } from './components/Pagination.js';
 import { getFilterState, resetFilters, hasActiveFilters, setupFilterListeners } from './components/FilterPanel.js';
@@ -28,7 +28,6 @@ const elements = {
   searchForm: null,
   resultsList: null,
   clearBtn: null,
-  toggleAdvanced: null,
 };
 
 /**
@@ -42,7 +41,6 @@ async function init() {
   elements.searchForm = document.getElementById('search-form');
   elements.resultsList = document.getElementById('results-list');
   elements.clearBtn = document.getElementById('clear-btn');
-  elements.toggleAdvanced = document.getElementById('toggle-advanced');
 
   try {
     // DuckDB-WASM の初期化
@@ -190,8 +188,9 @@ function buildSearchOptions(formValues, filterState) {
   if (formValues.name) {
     options.name = formValues.name;
   }
-  if (formValues.type) {
-    options.type = formValues.type;
+  // 種別フィルタ（配列）
+  if (formValues.types && formValues.types.length > 0) {
+    options.types = formValues.types;
   }
   if (formValues.minEvaluationPoint !== '') {
     options.minEvaluationPoint = formValues.minEvaluationPoint;
@@ -200,25 +199,14 @@ function buildSearchOptions(formValues, filterState) {
     options.maxEvaluationPoint = formValues.maxEvaluationPoint;
   }
 
-  // 詳細フィルタ
-  if (filterState.runningStyles.length > 0) {
-    options.runningStyle = filterState.runningStyles[0];
-  }
-  if (filterState.distances.length > 0) {
-    options.distanceType = filterState.distances[0];
-  }
-  if (filterState.grounds.length > 0) {
-    options.groundType = filterState.grounds[0];
-  }
-  if (filterState.phases.length > 0) {
-    options.phase = filterState.phases[0];
-  }
-  if (filterState.effectType) {
-    options.effectType = filterState.effectType;
-  }
-  if (filterState.orderRange) {
-    options.orderRange = filterState.orderRange;
-  }
+  // 詳細フィルタ（すべて配列で渡す）
+  options.runningStyles = filterState.runningStyles;
+  options.distances = filterState.distances;
+  options.grounds = filterState.grounds;
+  options.phases = filterState.phases;
+  options.effectTypes = filterState.effectTypes;
+  options.orders = filterState.orders;
+
   if (filterState.excludeDemerit) {
     options.excludeDemerit = true;
   }

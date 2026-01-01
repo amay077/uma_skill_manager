@@ -54,7 +54,8 @@ export const ORDER_RANGES = {
 export const SKILL_TYPES = {
   unique: { label: '固有', className: 'unique' },
   evolution: { label: '進化', className: 'evolution' },
-  normal: { label: '通常', className: 'normal' },
+  inherited_unique: { label: '継承固有', className: 'inherited-unique' },
+  normal: { label: '白', className: 'normal' },
 };
 
 // ページネーション設定

@@ -10,7 +10,12 @@ import { RUNNING_STYLES, DISTANCES, GROUNDS, PHASES, SKILL_TYPES } from '../db/c
  * @returns {string} HTML 文字列
  */
 export function renderSkillCard(skill) {
-  const typeInfo = SKILL_TYPES[skill.type] || { label: skill.type, className: '' };
+  // sub_type が inherited_unique の場合は継承固有として表示
+  const displayType = skill.sub_type === 'inherited_unique' ? 'inherited_unique' : skill.type;
+  const typeInfo = SKILL_TYPES[displayType] || { label: skill.type, className: '' };
+
+  // 効果パラメータを解析
+  const effectInfo = parseEffectParams(skill.effect_params);
 
   return `
     <div class="skill-card" data-skill-id="${skill.id}">
@@ -19,7 +24,11 @@ export function renderSkillCard(skill) {
           <span class="skill-type ${typeInfo.className}">${typeInfo.label}</span>
           <span class="skill-name">${escapeHtml(skill.name)}</span>
         </div>
-        <span class="skill-eval">評価点: ${skill.evaluation_point}</span>
+        <div class="skill-meta">
+          <span class="skill-eval">評価点: ${skill.evaluation_point}</span>
+          ${effectInfo.effectValue ? `<span class="skill-effect">効果量: ${effectInfo.effectValue}</span>` : ''}
+          ${effectInfo.duration ? `<span class="skill-duration">効果時間: ${effectInfo.duration}s</span>` : ''}
+        </div>
       </div>
 
       ${skill.support_card_full_name ? `
@@ -39,6 +48,50 @@ export function renderSkillCard(skill) {
       </div>
     </div>
   `;
+}
+
+/**
+ * 効果パラメータを解析して効果量と効果時間を取得
+ * @param {string} effectParams - "key:value,key:value,..." 形式の文字列
+ * @returns {object} { effectValue, duration, effectType }
+ */
+function parseEffectParams(effectParams) {
+  if (!effectParams) return {};
+
+  const params = {};
+  effectParams.split(',').forEach(pair => {
+    const [key, value] = pair.split(':');
+    if (key && value) {
+      params[key.trim()] = parseFloat(value);
+    }
+  });
+
+  // 効果量を決定（優先順位: targetSpeed > currentSpeed > acceleration > hpRecovery）
+  let effectValue = null;
+  let effectType = null;
+
+  if (params.targetSpeed !== undefined) {
+    effectValue = params.targetSpeed;
+    effectType = 'speed';
+  } else if (params.currentSpeed !== undefined) {
+    effectValue = params.currentSpeed;
+    effectType = 'speed';
+  } else if (params.acceleration !== undefined) {
+    effectValue = params.acceleration;
+    effectType = 'accel';
+  } else if (params.hpRecovery !== undefined) {
+    effectValue = params.hpRecovery;
+    effectType = 'stamina';
+  }
+
+  // 効果時間
+  const duration = params.duration || null;
+
+  return {
+    effectValue: effectValue !== null ? effectValue.toFixed(2) : null,
+    duration: duration !== null ? duration.toFixed(1) : null,
+    effectType,
+  };
 }
 
 /**

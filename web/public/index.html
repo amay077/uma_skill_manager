@@ -31,11 +31,11 @@
 
             <div class="form-group">
               <label>種別</label>
-              <div class="radio-group">
-                <label><input type="radio" name="skill-type" value="" checked> 全て</label>
-                <label><input type="radio" name="skill-type" value="unique"> 固有</label>
-                <label><input type="radio" name="skill-type" value="evolution"> 進化</label>
-                <label><input type="radio" name="skill-type" value="normal"> 通常</label>
+              <div class="checkbox-group">
+                <label><input type="checkbox" name="skill-type" value="evolution"> 進化</label>
+                <label><input type="checkbox" name="skill-type" value="unique"> 固有</label>
+                <label><input type="checkbox" name="skill-type" value="inherited_unique"> 継承固有</label>
+                <label><input type="checkbox" name="skill-type" value="normal"> 白</label>
               </div>
             </div>
 
@@ -49,13 +49,8 @@
             </div>
           </div>
 
-          <!-- 詳細検索トグル -->
-          <button type="button" id="toggle-advanced" class="toggle-advanced">
-            <span class="toggle-icon">▼</span> 詳細検索を表示
-          </button>
-
-          <!-- 詳細検索パネル -->
-          <div id="advanced-panel" class="advanced-panel" style="display: none;">
+          <!-- 詳細検索パネル（常時表示） -->
+          <div id="advanced-panel" class="advanced-panel">
             <div class="filter-row">
               <!-- 作戦 -->
               <div class="filter-group">
@@ -103,13 +98,12 @@
               <!-- 効果種別 -->
               <div class="filter-group">
                 <label>効果種別</label>
-                <div class="radio-group">
-                  <label><input type="radio" name="effect-type" value="" checked> 全て</label>
-                  <label><input type="radio" name="effect-type" value="speed"> 速度</label>
-                  <label><input type="radio" name="effect-type" value="accel"> 加速</label>
-                  <label><input type="radio" name="effect-type" value="stamina"> 回復</label>
-                  <label><input type="radio" name="effect-type" value="position"> 位置</label>
-                  <label><input type="radio" name="effect-type" value="debuff"> デバフ</label>
+                <div class="checkbox-group">
+                  <label><input type="checkbox" name="effect-type" value="speed"> 速度</label>
+                  <label><input type="checkbox" name="effect-type" value="accel"> 加速</label>
+                  <label><input type="checkbox" name="effect-type" value="stamina"> 回復</label>
+                  <label><input type="checkbox" name="effect-type" value="position"> 位置</label>
+                  <label><input type="checkbox" name="effect-type" value="debuff"> デバフ</label>
                 </div>
               </div>
             </div>
@@ -118,14 +112,16 @@
               <!-- 順位条件 -->
               <div class="filter-group">
                 <label>順位条件（9人立て）</label>
-                <div class="radio-group">
-                  <label><input type="radio" name="order-range" value="" checked> 全て</label>
-                  <label><input type="radio" name="order-range" value="top1"> 1位</label>
-                  <label><input type="radio" name="order-range" value="top2"> 2位以内</label>
-                  <label><input type="radio" name="order-range" value="top4"> 4位以内</label>
-                  <label><input type="radio" name="order-range" value="top6"> 6位以内</label>
-                  <label><input type="radio" name="order-range" value="mid"> 中団</label>
-                  <label><input type="radio" name="order-range" value="back"> 後方</label>
+                <div class="checkbox-group order-checkboxes">
+                  <label><input type="checkbox" name="order" value="1"> 1位</label>
+                  <label><input type="checkbox" name="order" value="2"> 2位</label>
+                  <label><input type="checkbox" name="order" value="3"> 3位</label>
+                  <label><input type="checkbox" name="order" value="4"> 4位</label>
+                  <label><input type="checkbox" name="order" value="5"> 5位</label>
+                  <label><input type="checkbox" name="order" value="6"> 6位</label>
+                  <label><input type="checkbox" name="order" value="7"> 7位</label>
+                  <label><input type="checkbox" name="order" value="8"> 8位</label>
+                  <label><input type="checkbox" name="order" value="9"> 9位</label>
                 </div>
               </div>
             </div>

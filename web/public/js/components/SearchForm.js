@@ -7,38 +7,32 @@
  * @returns {object} フォームの値
  */
 export function getFormValues() {
-  const form = document.getElementById('search-form');
-
   return {
     // 基本検索
     name: document.getElementById('skill-name').value.trim(),
-    type: form.querySelector('input[name="skill-type"]:checked')?.value || '',
+    types: getCheckedValues('skill-type'),
     minEvaluationPoint: document.getElementById('eval-min').value,
     maxEvaluationPoint: document.getElementById('eval-max').value,
 
     // 詳細検索
-    runningStyle: getSelectedCheckboxValue('running-style'),
-    distanceType: getSelectedCheckboxValue('distance'),
-    groundType: getSelectedCheckboxValue('ground'),
-    phase: getSelectedCheckboxValue('phase'),
-    effectType: form.querySelector('input[name="effect-type"]:checked')?.value || '',
-    orderRange: form.querySelector('input[name="order-range"]:checked')?.value || '',
+    runningStyles: getCheckedValues('running-style'),
+    distances: getCheckedValues('distance'),
+    grounds: getCheckedValues('ground'),
+    phases: getCheckedValues('phase'),
+    effectTypes: getCheckedValues('effect-type'),
+    orders: getCheckedValues('order'),
     excludeDemerit: document.getElementById('exclude-demerit').checked,
   };
 }
 
 /**
- * チェックボックスグループから選択された値を取得
- * 複数選択の場合は最初の1つを返す（単一選択として扱う）
+ * チェックボックスグループから選択された値を配列で取得
  * @param {string} name - チェックボックスの name 属性
- * @returns {string} 選択された値
+ * @returns {Array<string>} 選択された値の配列
  */
-function getSelectedCheckboxValue(name) {
-  const checked = document.querySelectorAll(`input[name="${name}"]:checked`);
-  if (checked.length === 0) return '';
-  if (checked.length === 1) return checked[0].value;
-  // 複数選択は現在未対応、最初の値を返す
-  return checked[0].value;
+function getCheckedValues(name) {
+  const checkboxes = document.querySelectorAll(`input[name="${name}"]:checked`);
+  return Array.from(checkboxes).map(cb => cb.value);
 }
 
 /**
@@ -49,30 +43,10 @@ export function clearForm() {
   document.getElementById('eval-min').value = '';
   document.getElementById('eval-max').value = '';
 
-  // ラジオボタンをリセット
-  document.querySelector('input[name="skill-type"][value=""]').checked = true;
-  document.querySelector('input[name="effect-type"][value=""]').checked = true;
-  document.querySelector('input[name="order-range"][value=""]').checked = true;
-
-  // チェックボックスをリセット
-  document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+  // 全チェックボックスをリセット
+  document.querySelectorAll('#search-form input[type="checkbox"]').forEach(cb => {
     cb.checked = false;
   });
-}
-
-/**
- * 詳細検索パネルの表示/非表示を切り替え
- */
-export function toggleAdvancedPanel() {
-  const panel = document.getElementById('advanced-panel');
-  const toggle = document.getElementById('toggle-advanced');
-  const isVisible = panel.style.display !== 'none';
-
-  panel.style.display = isVisible ? 'none' : 'block';
-  toggle.classList.toggle('active', !isVisible);
-  toggle.innerHTML = isVisible
-    ? '<span class="toggle-icon">▼</span> 詳細検索を表示'
-    : '<span class="toggle-icon">▼</span> 詳細検索を隠す';
 }
 
 /**
@@ -82,12 +56,12 @@ export function toggleAdvancedPanel() {
 export function isAdvancedSearchActive() {
   const values = getFormValues();
   return !!(
-    values.runningStyle ||
-    values.distanceType ||
-    values.groundType ||
-    values.phase ||
-    values.effectType ||
-    values.orderRange ||
+    values.runningStyles.length > 0 ||
+    values.distances.length > 0 ||
+    values.grounds.length > 0 ||
+    values.phases.length > 0 ||
+    values.effectTypes.length > 0 ||
+    values.orders.length > 0 ||
     values.excludeDemerit
   );
 }
@@ -98,7 +72,6 @@ export function isAdvancedSearchActive() {
  */
 export function setupFormListeners(onSearch) {
   const form = document.getElementById('search-form');
-  const toggleBtn = document.getElementById('toggle-advanced');
   const clearBtn = document.getElementById('clear-btn');
 
   // フォーム送信
@@ -106,9 +79,6 @@ export function setupFormListeners(onSearch) {
     e.preventDefault();
     onSearch();
   });
-
-  // 詳細検索トグル
-  toggleBtn.addEventListener('click', toggleAdvancedPanel);
 
   // クリアボタン
   clearBtn.addEventListener('click', () => {

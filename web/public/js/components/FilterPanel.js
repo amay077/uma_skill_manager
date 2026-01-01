@@ -15,8 +15,8 @@ export function getFilterState() {
     distances: getCheckedValues('distance'),
     grounds: getCheckedValues('ground'),
     phases: getCheckedValues('phase'),
-    effectType: getRadioValue('effect-type'),
-    orderRange: getRadioValue('order-range'),
+    effectTypes: getCheckedValues('effect-type'),
+    orders: getCheckedValues('order'),
     excludeDemerit: document.getElementById('exclude-demerit')?.checked || false,
   };
 }
@@ -32,16 +32,6 @@ function getCheckedValues(name) {
 }
 
 /**
- * ラジオボタンの選択値を取得
- * @param {string} name - ラジオボタンの name 属性
- * @returns {string} 選択された値
- */
-function getRadioValue(name) {
-  const radio = document.querySelector(`input[name="${name}"]:checked`);
-  return radio?.value || '';
-}
-
-/**
  * フィルタパネルをリセット
  */
 export function resetFilters() {
@@ -49,13 +39,6 @@ export function resetFilters() {
   document.querySelectorAll('#advanced-panel input[type="checkbox"]').forEach(cb => {
     cb.checked = false;
   });
-
-  // ラジオボタンをデフォルトに戻す
-  const effectTypeDefault = document.querySelector('input[name="effect-type"][value=""]');
-  if (effectTypeDefault) effectTypeDefault.checked = true;
-
-  const orderRangeDefault = document.querySelector('input[name="order-range"][value=""]');
-  if (orderRangeDefault) orderRangeDefault.checked = true;
 }
 
 /**
@@ -69,8 +52,8 @@ export function hasActiveFilters() {
     state.distances.length > 0 ||
     state.grounds.length > 0 ||
     state.phases.length > 0 ||
-    state.effectType !== '' ||
-    state.orderRange !== '' ||
+    state.effectTypes.length > 0 ||
+    state.orders.length > 0 ||
     state.excludeDemerit
   );
 }
