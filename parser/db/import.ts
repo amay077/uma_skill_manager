@@ -179,18 +179,18 @@ function importEffectParameters(
 
 /**
  * 継承固有スキルの事後修正
- * 同名の固有スキル（評価点 >= 300）が存在する normal スキルを inherited_unique に修正
+ * 同名の固有スキル（type='unique'）が存在する normal スキルを inherited_unique に修正
  * @param db Database インスタンス
  * @returns 修正した件数
  */
 function fixInheritedUniqueSkills(db: Database.Database): number {
+  // 同名の unique スキルが存在する normal スキルを inherited_unique に変更
   const result = db.prepare(`
     UPDATE skills
     SET type = 'unique', sub_type = 'inherited_unique'
     WHERE type = 'normal'
       AND name IN (
-        SELECT name FROM skills
-        WHERE type = 'unique' AND evaluation_point >= 300
+        SELECT name FROM skills WHERE type = 'unique'
       )
   `).run();
 

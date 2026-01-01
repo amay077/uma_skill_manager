@@ -114,21 +114,21 @@ function parseEvaluationLine(line: string): {
 
 /**
  * スキル詳細種別（subType）を決定する
- * - unique: 固有スキル（type='unique' かつ 評価点>=300）
- * - inherited_unique: 継承固有スキル（type='unique' かつ 評価点<300）
+ * - unique: 固有スキル（type='unique'）※継承固有の判定は DB インポート時に行う
+ * - inherited_unique: 継承固有スキル（同名の固有スキルが存在する場合、DB インポート時に設定）
  * - gold: 金スキル（type='normal' かつ SP合計表記あり）
  * - normal: 通常スキル（type='normal' かつ SP値のみ）
  * - evolution: 進化スキル（type='evolution'）
  */
 function determineSubType(
   type: SkillType,
-  evaluationPoint: number,
+  _evaluationPoint: number,
   spTotal?: number
 ): SkillSubType {
   switch (type) {
     case 'unique':
-      // 固有スキルは評価点300以上が本来の固有、それ未満は継承固有
-      return evaluationPoint >= 300 ? 'unique' : 'inherited_unique';
+      // パース時点では一律 unique、継承固有の判定は DB インポート時に同名スキルの存在で行う
+      return 'unique';
     case 'evolution':
       return 'evolution';
     case 'normal':

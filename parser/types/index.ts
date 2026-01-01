@@ -87,8 +87,8 @@ export type SkillType = 'unique' | 'evolution' | 'normal';
 
 /**
  * スキル詳細種別（小分類）
- * - unique: 固有スキル（評価点300以上）
- * - inherited_unique: 継承固有スキル（評価点300未満）
+ * - unique: 固有スキル（同名スキルが存在しない type='unique' のスキル）
+ * - inherited_unique: 継承固有スキル（同名の固有スキルが存在する場合、評価点が低い方）
  * - gold: 金スキル（SP合計表記あり）
  * - normal: 通常スキル（SPのみ）
  * - evolution: 進化スキル

@@ -26,6 +26,7 @@ TBD - created by archiving change USM-002-add-skill-database. Update Purpose aft
   - name: TEXT NOT NULL（スキル名）
   - support_card_id: INTEGER（外部キー、NULL 許可）
   - type: TEXT NOT NULL（'unique', 'evolution', 'normal'）
+  - sub_type: TEXT NOT NULL（'unique', 'inherited_unique', 'gold', 'normal', 'evolution'）
   - base_skill_name: TEXT（進化元スキル名、進化スキルのみ）
   - description: TEXT NOT NULL（効果説明）
   - evaluation_point: INTEGER NOT NULL（評価点）
@@ -142,6 +143,40 @@ TBD - created by archiving change USM-002-add-skill-database. Update Purpose aft
 - **GIVEN** JSON ファイルが不正なフォーマット
 - **WHEN** インポートを試みる
 - **THEN** "JSON パースエラー: [詳細]" というエラーメッセージを出力し、処理を中断する
+
+### Requirement: スキル詳細種別（sub_type）の分類
+
+システムはスキルの詳細種別（sub_type）を以下の基準で分類しなければならない（MUST classify）。
+
+#### Scenario: 固有スキルの sub_type 判定
+
+- **GIVEN** type='unique' のスキルがインポートされる
+- **WHEN** 同名のスキルが skills テーブルに存在しない
+- **THEN** sub_type='unique' として登録される
+
+#### Scenario: 継承固有スキルの sub_type 判定
+
+- **GIVEN** type='unique' のスキルがインポートされる
+- **WHEN** 同名のスキルが skills テーブルに別途存在する
+- **THEN** 評価点が低い方のスキルの sub_type が 'inherited_unique' に更新される
+
+#### Scenario: 金スキルの sub_type 判定
+
+- **GIVEN** type='normal' のスキルがインポートされる
+- **WHEN** SP 合計表記（「SP+進化元SP」形式）が存在する
+- **THEN** sub_type='gold' として登録される
+
+#### Scenario: 白スキルの sub_type 判定
+
+- **GIVEN** type='normal' のスキルがインポートされる
+- **WHEN** SP 合計表記が存在しない
+- **THEN** sub_type='normal' として登録される
+
+#### Scenario: 進化スキルの sub_type 判定
+
+- **GIVEN** type='evolution' のスキルがインポートされる
+- **WHEN** パース処理が完了する
+- **THEN** sub_type='evolution' として登録される
 
 ## Related Changes
 
