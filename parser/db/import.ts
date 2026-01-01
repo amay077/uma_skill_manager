@@ -492,6 +492,44 @@ function parsePhaseFlags(conditionRaw: string | null): string {
     late = false;
   }
 
+  // phase_firsthalf_random のパターン
+  // ==1, ==2: 中盤前半/後半ランダム → 中盤のみ
+  if (/phase_firsthalf_random==[12]/.test(conditionRaw)) {
+    early = false;
+    late = false;
+  }
+  // ==3: 終盤前半ランダム → 終盤のみ
+  if (/phase_firsthalf_random==3/.test(conditionRaw)) {
+    early = false;
+    mid = false;
+  }
+
+  // phase_laterhalf_random のパターン
+  // ==0: 序盤後半ランダム → 序盤のみ
+  if (/phase_laterhalf_random==0/.test(conditionRaw)) {
+    mid = false;
+    late = false;
+  }
+  // ==1: 中盤後半ランダム → 中盤のみ
+  if (/phase_laterhalf_random==1/.test(conditionRaw)) {
+    early = false;
+    late = false;
+  }
+
+  // phase_firsthalf のパターン（非ランダム）
+  // ==1: 中盤前半 → 中盤のみ
+  if (/phase_firsthalf==1/.test(conditionRaw)) {
+    early = false;
+    late = false;
+  }
+
+  // phase_laterhalf のパターン（非ランダム）
+  // ==0: 序盤後半 → 序盤のみ
+  if (/phase_laterhalf==0/.test(conditionRaw)) {
+    mid = false;
+    late = false;
+  }
+
   // distance_rate による序盤・中盤判定
   const distanceRateEarlyPattern = /distance_rate<=(\d+)/g;
   const earlyMatches = [...conditionRaw.matchAll(distanceRateEarlyPattern)];
