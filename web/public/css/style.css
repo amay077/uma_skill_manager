@@ -293,9 +293,10 @@ body {
   color: white;
 }
 
-.skill-type.unique { background-color: #e91e63; }
 .skill-type.evolution { background-color: #9c27b0; }
+.skill-type.unique { background-color: #e91e63; }
 .skill-type.inherited-unique { background-color: #ff9800; }
+.skill-type.gold { background-color: #ffc107; color: #333; }
 .skill-type.normal { background-color: #607d8b; }
 
 .skill-meta {

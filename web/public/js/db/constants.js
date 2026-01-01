@@ -50,11 +50,12 @@ export const ORDER_RANGES = {
   back: { label: '後方', positions: [6, 7, 8, 9] },
 };
 
-// スキルタイプの表示名
+// スキルタイプの表示名（sub_type ベース）
 export const SKILL_TYPES = {
-  unique: { label: '固有', className: 'unique' },
   evolution: { label: '進化', className: 'evolution' },
+  unique: { label: '固有', className: 'unique' },
   inherited_unique: { label: '継承固有', className: 'inherited-unique' },
+  gold: { label: '金', className: 'gold' },
   normal: { label: '白', className: 'normal' },
 };
 

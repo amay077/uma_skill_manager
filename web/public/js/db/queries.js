@@ -272,27 +272,21 @@ function escapeSql(str) {
 }
 
 /**
- * 種別条件を生成
+ * 種別条件を生成（sub_type ベース）
  * 全チェック ON = 全チェック OFF → 全種別検索（条件なし）
  * 一部チェック → OR 検索
- * @param {Array<string>} types - 種別配列 ['evolution', 'unique', 'inherited_unique', 'normal']
+ * @param {Array<string>} subTypes - 種別配列 ['evolution', 'unique', 'inherited_unique', 'gold', 'normal']
  * @returns {string|null} SQL 条件
  */
-function buildTypeCondition(types) {
-  if (!types || types.length === 0 || types.length === 4) {
-    // 全チェック ON = 全チェック OFF → 条件なし
+function buildTypeCondition(subTypes) {
+  // 全 5 種類チェック ON = 全チェック OFF → 条件なし
+  if (!subTypes || subTypes.length === 0 || subTypes.length === 5) {
     return null;
   }
 
-  // inherited_unique は sub_type で判定、他は type で判定
-  const orConditions = types.map(t => {
-    if (t === 'inherited_unique') {
-      return `s.sub_type = 'inherited_unique'`;
-    }
-    return `(s.type = '${escapeSql(t)}' AND s.sub_type != 'inherited_unique')`;
-  });
-
-  return `(${orConditions.join(' OR ')})`;
+  // sub_type で判定
+  const escaped = subTypes.map(t => `'${escapeSql(t)}'`).join(', ');
+  return `s.sub_type IN (${escaped})`;
 }
 
 /**

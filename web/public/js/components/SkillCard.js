@@ -10,9 +10,8 @@ import { RUNNING_STYLES, DISTANCES, GROUNDS, PHASES, SKILL_TYPES } from '../db/c
  * @returns {string} HTML 文字列
  */
 export function renderSkillCard(skill) {
-  // sub_type が inherited_unique の場合は継承固有として表示
-  const displayType = skill.sub_type === 'inherited_unique' ? 'inherited_unique' : skill.type;
-  const typeInfo = SKILL_TYPES[displayType] || { label: skill.type, className: '' };
+  // sub_type を基準に表示タイプを決定
+  const typeInfo = SKILL_TYPES[skill.sub_type] || { label: skill.sub_type || skill.type, className: '' };
 
   // 効果パラメータを解析
   const effectInfo = parseEffectParams(skill.effect_params);
