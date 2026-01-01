@@ -144,16 +144,23 @@ uma/
 ├── package.json
 ├── assets/
 │   └── umasim_skill.txt  # データソース（手動更新）
-├── scraping/             # ウマ娘 DB スクレイピングツール
-│   ├── README.md         # 詳細な使い方
-│   └── src/
-├── src/
+├── parser/               # パーサー＆DB（サブプロジェクト 1）
 │   ├── parser/           # データパーサー
 │   ├── db/               # SQLite 関連
-│   └── types/            # 型定義
-├── data/
-│   └── uma.db            # SQLite データベース
-└── tests/
+│   ├── types/            # 型定義
+│   ├── cli/              # CLI ツール
+│   │   └── search.ts     # スキル検索スクリプト
+│   └── tests/            # パーサーテスト
+├── web/                  # フロントエンド（サブプロジェクト 2）
+│   ├── js/               # JavaScript
+│   ├── css/              # スタイルシート
+│   ├── index.html        # エントリーポイント
+│   └── tests/            # E2E テスト
+├── scraping/             # スクレイピングツール（サブプロジェクト 3）
+│   ├── README.md         # 詳細な使い方
+│   └── src/
+└── data/
+    └── uma.db            # SQLite データベース
 ```
 
 ## ウマ娘 DB スクレイピングツール

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseSkillData } from '../src/parser/skillParser.js';
+import { parseSkillData } from '../parser/skillParser.js';
 
 describe('parseSkillData', () => {
   it('should parse unique skill', () => {

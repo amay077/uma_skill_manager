@@ -3,12 +3,12 @@
  * スキル検索 CLI
  *
  * 使用例:
- *   npx tsx scripts/search.ts --running-style nige --phase non_late --effect speed
- *   npx tsx scripts/search.ts --sub-type normal,unique --order top4 --ground turf
+ *   npx tsx parser/cli/search.ts --running-style nige --phase non_late --effect speed
+ *   npx tsx parser/cli/search.ts --sub-type normal,unique --order top4 --ground turf
  */
 import { parseArgs } from 'node:util';
 import { writeFileSync } from 'node:fs';
-import { advancedSearch, type AdvancedSearchOptions } from '../src/db/queries.js';
+import { advancedSearch, type AdvancedSearchOptions } from '../db/queries.js';
 
 // CLI 引数の定義
 const { values } = parseArgs({

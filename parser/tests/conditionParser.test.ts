@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseSingleCondition, parseAndGroup, parseCondition } from '../src/parser/conditionParser.js';
+import { parseSingleCondition, parseAndGroup, parseCondition } from '../parser/conditionParser.js';
 
 describe('parseSingleCondition', () => {
   it('should parse >= condition', () => {

@@ -27,7 +27,7 @@ export async function initDatabase(onProgress) {
   onProgress?.('データベースファイルを取得中...');
 
   // SQLite ファイルを取得
-  const response = await fetch('./data/uma.db');
+  const response = await fetch('../data/uma.db');
   if (!response.ok) {
     throw new Error(`データベースファイルの取得に失敗しました: ${response.status}`);
   }

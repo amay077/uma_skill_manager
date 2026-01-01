@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseEffectParameters } from '../src/parser/effectParser.js';
+import { parseEffectParameters } from '../parser/effectParser.js';
 
 describe('parseEffectParameters', () => {
   it('should parse targetSpeed and duration', () => {

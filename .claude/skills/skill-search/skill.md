@@ -50,37 +50,37 @@ allowed-tools: "Read,Bash"
 ### 逃げ用・終盤以外・速度スキル（チャンミ4位以内）
 
 ```bash
-npx tsx scripts/search.ts -r nige -p non_late -e speed -o top4
+npx tsx parser/cli/search.ts -r nige -p non_late -e speed -o top4
 ```
 
 ### 白スキル＋固有スキルを検索
 
 ```bash
-npx tsx scripts/search.ts -s normal,unique --exclude-demerit
+npx tsx parser/cli/search.ts -s normal,unique --exclude-demerit
 ```
 
 ### コーナースキルを検索
 
 ```bash
-npx tsx scripts/search.ts -p corner -e speed
+npx tsx parser/cli/search.ts -p corner -e speed
 ```
 
 ### 名前で検索
 
 ```bash
-npx tsx scripts/search.ts -n コーナー
+npx tsx parser/cli/search.ts -n コーナー
 ```
 
 ### JSON形式で出力
 
 ```bash
-npx tsx scripts/search.ts -r nige -f json
+npx tsx parser/cli/search.ts -r nige -f json
 ```
 
 ### シンプル形式で出力
 
 ```bash
-npx tsx scripts/search.ts -r nige -f simple
+npx tsx parser/cli/search.ts -r nige -f simple
 ```
 
 ## 実装
@@ -88,7 +88,7 @@ npx tsx scripts/search.ts -r nige -f simple
 検索を実行するには、以下のコマンドを実行:
 
 ```bash
-npx tsx scripts/search.ts [オプション] -O results/skill-search.md
+npx tsx parser/cli/search.ts [オプション] -O results/skill-search.md
 ```
 
 ユーザーからの検索依頼を受けたら、上記コマンドに適切なオプションを付けて実行する。

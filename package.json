@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "description": "ウマ娘スキル・サポカ管理データ基盤",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "parser/index.ts",
   "scripts": {
-    "parse": "npx tsx src/index.ts",
-    "db:import": "npx tsx src/db/import.ts --force",
-    "db:init": "npx tsx -e \"import { initializeDatabase } from './src/db/connection.js'; initializeDatabase(undefined, true); console.log('Database initialized.');\"",
+    "parse": "npx tsx parser/index.ts",
+    "db:import": "npx tsx parser/db/import.ts --force",
+    "db:init": "npx tsx -e \"import { initializeDatabase } from './parser/db/connection.js'; initializeDatabase(undefined, true); console.log('Database initialized.');\"",
     "test": "npx vitest run",
     "test:watch": "npx vitest",
     "typecheck": "npx tsc --noEmit"
