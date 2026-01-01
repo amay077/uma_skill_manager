@@ -530,6 +530,23 @@ function parsePhaseFlags(conditionRaw: string | null): string {
     late = false;
   }
 
+  // distance_rate_after_random のパターン
+  // 「距離N%以降のランダムなタイミング」を意味する
+  const distanceAfterRandomMatch = conditionRaw.match(
+    /distance_rate_after_random==(\d+)/
+  );
+  if (distanceAfterRandomMatch) {
+    const rate = parseInt(distanceAfterRandomMatch[1], 10);
+    if (rate >= 66) {
+      // 66%以降 = 終盤のみ
+      early = false;
+      mid = false;
+    } else if (rate >= 50) {
+      // 50%以降 = 中盤・終盤（序盤を除外）
+      early = false;
+    }
+  }
+
   // distance_rate による序盤・中盤判定
   const distanceRateEarlyPattern = /distance_rate<=(\d+)/g;
   const earlyMatches = [...conditionRaw.matchAll(distanceRateEarlyPattern)];

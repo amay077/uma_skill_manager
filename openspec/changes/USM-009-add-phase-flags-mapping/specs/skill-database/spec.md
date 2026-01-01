@@ -58,6 +58,14 @@
 - **WHEN** N>=33 の場合
 - **THEN** phase_flags のうち序盤ビットが 0 になる（中盤以降発動）
 
+#### Scenario: distance_rate_after_random 変数によるマッピング
+
+- **GIVEN** スキルの発動条件に `distance_rate_after_random==N` が含まれる
+- **WHEN** N>=66 の場合
+- **THEN** phase_flags のうち序盤・中盤ビットが 0 になる（終盤のみ発動）
+- **WHEN** N>=50 かつ N<66 の場合
+- **THEN** phase_flags のうち序盤ビットが 0 になる（中盤・終盤発動）
+
 #### Scenario: 条件なしスキルのデフォルト値
 
 - **GIVEN** スキルの発動条件が空または phase 関連条件を含まない
