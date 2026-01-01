@@ -1,5 +1,5 @@
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
 import { parseSkillData } from './parser/index.js';
 import type { ParseResult } from './types/index.js';
 
@@ -131,6 +131,7 @@ function outputResults(result: ParseResult, options: CliOptions): void {
   if (options.output) {
     const outputPath = resolve(options.output);
     try {
+      mkdirSync(dirname(outputPath), { recursive: true });
       writeFileSync(outputPath, JSON.stringify(result.skills, null, 2), 'utf-8');
       console.log(`スキルデータを出力しました: ${outputPath}`);
     } catch (error) {
@@ -142,6 +143,7 @@ function outputResults(result: ParseResult, options: CliOptions): void {
   if (options.supportCardsOutput) {
     const outputPath = resolve(options.supportCardsOutput);
     try {
+      mkdirSync(dirname(outputPath), { recursive: true });
       writeFileSync(outputPath, JSON.stringify(result.supportCards, null, 2), 'utf-8');
       console.log(`サポートカード一覧を出力しました: ${outputPath}`);
     } catch (error) {

@@ -2,14 +2,14 @@
  * データベース接続ユーティリティ
  */
 import Database from 'better-sqlite3';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /** デフォルトのデータベースファイルパス */
-export const DEFAULT_DB_PATH = join(__dirname, '../../data/uma.db');
+export const DEFAULT_DB_PATH = join(__dirname, '../../web/public/data/uma.db');
 
 /** スキーマファイルパス */
 const SCHEMA_PATH = join(__dirname, 'schema.sql');
@@ -33,6 +33,9 @@ export function initializeDatabase(
   dbPath: string = DEFAULT_DB_PATH,
   force: boolean = false
 ): Database.Database {
+  // 出力ディレクトリを自動作成
+  mkdirSync(dirname(dbPath), { recursive: true });
+
   const db = new Database(dbPath);
 
   // WAL モードを有効化（パフォーマンス向上）

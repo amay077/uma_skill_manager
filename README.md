@@ -18,15 +18,39 @@ npm run db:import   # DB 初期化
 npm run test        # テスト実行
 ```
 
+## Getting Started
+
+スキルデータを入手してからフロントエンドで検索できるようになるまでの手順。
+
+### 1. データソースを配置
+
+[mee1080/umasim](https://mee1080.github.io/umasim/skill/) からスキルデータをコピーし、`assets/umasim_skill.txt` に保存。
+
+### 2. パース & DB 生成
+
+```bash
+npm run parse        # スキルデータをパース → output/skills.json
+npm run db:import    # JSON を DB にインポート → web/public/data/uma.db
+```
+
+### 3. フロントエンドで検索
+
+```bash
+cd web/public
+npx serve .          # または任意の HTTP サーバー
+```
+
+ブラウザで `http://localhost:3000` を開き、スキル検索を実行。
+
 ## ディレクトリ構成
 
 ```
 uma/
-├── parser/       # パーサー＆DB
-├── web/          # Web UI
-├── scraping/     # スクレイピングツール
-├── assets/       # データソース
-└── data/         # SQLite DB
+├── parser/           # パーサー＆DB
+├── web/public/       # Web UI（静的ホスティング対応）
+│   └── data/         # SQLite DB
+├── scraping/         # スクレイピングツール
+└── assets/           # データソース
 ```
 
 ## データソース

@@ -5,7 +5,7 @@
   "type": "module",
   "main": "parser/index.ts",
   "scripts": {
-    "parse": "npx tsx parser/index.ts",
+    "parse": "npx tsx parser/index.ts --input assets/umasim_skill.txt --output output/skills.json",
     "db:import": "npx tsx parser/db/import.ts --force",
     "db:init": "npx tsx -e \"import { initializeDatabase } from './parser/db/connection.js'; initializeDatabase(undefined, true); console.log('Database initialized.');\"",
     "test": "npx vitest run",
