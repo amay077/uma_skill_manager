@@ -7,17 +7,7 @@ TBD - created by archiving change USM-002-add-skill-database. Update Purpose aft
 
 システムはスキルデータを格納するための正規化されたデータベーススキーマを提供しなければならない（MUST provide normalized schema）。
 
-#### Scenario: support_cards テーブルの構造
-
-- **GIVEN** SQLite データベースが初期化される
-- **WHEN** スキーマが適用される
-- **THEN** support_cards テーブルが以下のカラムを持つ:
-  - id: INTEGER PRIMARY KEY AUTOINCREMENT
-  - costume_name: TEXT NOT NULL（衣装名）
-  - character_name: TEXT NOT NULL（キャラ名）
-  - full_name: TEXT NOT NULL UNIQUE（[衣装名]キャラ名）
-
-#### Scenario: skills テーブルの構造
+#### Scenario: skills テーブルの構造（sub_type カラム追加）
 
 - **GIVEN** SQLite データベースが初期化される
 - **WHEN** スキーマが適用される
@@ -34,29 +24,6 @@ TBD - created by archiving change USM-002-add-skill-database. Update Purpose aft
   - trigger_type: TEXT（発動タイプ）
   - condition_raw: TEXT（発動条件式の生文字列）
   - condition_description: TEXT（条件の日本語解説）
-
-#### Scenario: skill_conditions テーブルの構造
-
-- **GIVEN** SQLite データベースが初期化される
-- **WHEN** スキーマが適用される
-- **THEN** skill_conditions テーブルが以下のカラムを持つ:
-  - id: INTEGER PRIMARY KEY AUTOINCREMENT
-  - skill_id: INTEGER NOT NULL（外部キー）
-  - group_index: INTEGER NOT NULL（OR グループのインデックス）
-  - condition_index: INTEGER NOT NULL（AND 条件のインデックス）
-  - variable: TEXT NOT NULL（変数名）
-  - operator: TEXT NOT NULL（演算子）
-  - value: REAL NOT NULL（比較値）
-
-#### Scenario: effect_parameters テーブルの構造
-
-- **GIVEN** SQLite データベースが初期化される
-- **WHEN** スキーマが適用される
-- **THEN** effect_parameters テーブルが以下のカラムを持つ:
-  - id: INTEGER PRIMARY KEY AUTOINCREMENT
-  - skill_id: INTEGER NOT NULL（外部キー）
-  - parameter_key: TEXT NOT NULL（パラメータ名）
-  - parameter_value: REAL NOT NULL（パラメータ値）
 
 ### Requirement: データベース初期化
 
@@ -178,6 +145,41 @@ TBD - created by archiving change USM-002-add-skill-database. Update Purpose aft
 - **WHEN** パース処理が完了する
 - **THEN** sub_type='evolution' として登録される
 
+### Requirement: スキル詳細種別（sub_type）の定義
+
+システムはスキルの詳細種別（sub_type）を以下の基準で分類しなければならない（MUST classify）。
+
+#### Scenario: 固有スキルの sub_type 判定
+
+- **GIVEN** type='unique' のスキルがインポートされる
+- **WHEN** 同名のスキルが skills テーブルに存在しない
+- **THEN** sub_type='unique' として登録される
+
+#### Scenario: 継承固有スキルの sub_type 判定
+
+- **GIVEN** type='unique' のスキルがインポートされる
+- **WHEN** 同名のスキルが skills テーブルに別途存在する
+- **THEN** 評価点が低い方のスキルの sub_type が 'inherited_unique' に更新される
+
+#### Scenario: 金スキルの sub_type 判定
+
+- **GIVEN** type='normal' のスキルがインポートされる
+- **WHEN** SP 合計表記（「SP+進化元SP」形式）が存在する
+- **THEN** sub_type='gold' として登録される
+
+#### Scenario: 白スキルの sub_type 判定
+
+- **GIVEN** type='normal' のスキルがインポートされる
+- **WHEN** SP 合計表記が存在しない
+- **THEN** sub_type='normal' として登録される
+
+#### Scenario: 進化スキルの sub_type 判定
+
+- **GIVEN** type='evolution' のスキルがインポートされる
+- **WHEN** パース処理が完了する
+- **THEN** sub_type='evolution' として登録される
+
 ## Related Changes
 
 - [2025-12-30-USM-002-add-skill-database](../../changes/archive/2025-12-30-USM-002-add-skill-database/proposal.md)
+- [2026-01-01-USM-008-fix-inherited-unique-detection](../../changes/archive/2026-01-01-USM-008-fix-inherited-unique-detection/proposal.md)
