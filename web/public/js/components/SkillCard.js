@@ -5,6 +5,17 @@
 import { RUNNING_STYLES, DISTANCES, GROUNDS, PHASES, SKILL_TYPES } from '../db/constants.js';
 
 /**
+ * 効果種別のアイコン定義
+ */
+const EFFECT_ICONS = {
+  targetSpeed: { icon: '⚡', label: '速度', className: 'effect-speed' },
+  currentSpeed: { icon: '⚡', label: '速度', className: 'effect-speed' },
+  acceleration: { icon: '🚀', label: '加速', className: 'effect-accel' },
+  hpRecovery: { icon: '💚', label: '回復', className: 'effect-recovery' },
+};
+
+
+/**
  * スキルカードの HTML を生成
  * @param {object} skill - スキルデータ
  * @returns {string} HTML 文字列
@@ -25,8 +36,7 @@ export function renderSkillCard(skill) {
         </div>
         <div class="skill-meta">
           <span class="skill-eval">評価点: ${skill.evaluation_point}</span>
-          ${effectInfo.effectValue ? `<span class="skill-effect">効果量: ${effectInfo.effectValue}</span>` : ''}
-          ${effectInfo.duration ? `<span class="skill-duration">効果時間: ${effectInfo.duration}s</span>` : ''}
+          ${effectInfo.duration ? `<span class="skill-duration">⏱ ${effectInfo.duration}s</span>` : ''}
         </div>
       </div>
 
@@ -36,6 +46,8 @@ export function renderSkillCard(skill) {
 
       <div class="skill-description">${escapeHtml(skill.description)}</div>
 
+      ${renderEffects(effectInfo.effects)}
+      ${renderOrderBadges(skill.order_flags)}
       ${renderFlags(skill)}
 
       <button type="button" class="skill-details-toggle" data-skill-id="${skill.id}">
@@ -50,12 +62,51 @@ export function renderSkillCard(skill) {
 }
 
 /**
- * 効果パラメータを解析して効果量と効果時間を取得
+ * 効果量を複数表示（アイコン付き）
+ * @param {Array} effects - 効果配列
+ * @returns {string} HTML 文字列
+ */
+function renderEffects(effects) {
+  if (!effects || effects.length === 0) return '';
+
+  const effectsHtml = effects.map(e => `
+    <span class="skill-effect ${e.className}">
+      ${e.icon} ${e.label}: ${e.value}
+    </span>
+  `).join('');
+
+  return `<div class="skill-effects">${effectsHtml}</div>`;
+}
+
+/**
+ * 発動順位（1位〜9位）のバッジを表示
+ * @param {string} flags - "111111111" 形式のフラグ文字列（9桁）
+ * @returns {string} HTML 文字列
+ */
+function renderOrderBadges(flags) {
+  if (!flags) return '';
+
+  const badges = [];
+  for (let i = 0; i < 9; i++) {
+    const isActive = flags[i] === '1';
+    badges.push(`<span class="order-badge ${isActive ? 'active' : ''}">${i + 1}</span>`);
+  }
+
+  return `
+    <div class="order-badges">
+      <span class="badge-label">順位:</span>
+      ${badges.join('')}
+    </div>
+  `;
+}
+
+/**
+ * 効果パラメータを解析して全ての効果と効果時間を取得
  * @param {string} effectParams - "key:value,key:value,..." 形式の文字列
- * @returns {object} { effectValue, duration, effectType }
+ * @returns {object} { effects: Array<{key, value, icon, label, className}>, duration }
  */
 function parseEffectParams(effectParams) {
-  if (!effectParams) return {};
+  if (!effectParams) return { effects: [], duration: null };
 
   const params = {};
   effectParams.split(',').forEach(pair => {
@@ -65,31 +116,33 @@ function parseEffectParams(effectParams) {
     }
   });
 
-  // 効果量を決定（優先順位: targetSpeed > currentSpeed > acceleration > hpRecovery）
-  let effectValue = null;
-  let effectType = null;
+  // 全ての効果を収集
+  const effects = [];
+  const effectKeys = ['targetSpeed', 'currentSpeed', 'acceleration', 'hpRecovery'];
 
-  if (params.targetSpeed !== undefined) {
-    effectValue = params.targetSpeed;
-    effectType = 'speed';
-  } else if (params.currentSpeed !== undefined) {
-    effectValue = params.currentSpeed;
-    effectType = 'speed';
-  } else if (params.acceleration !== undefined) {
-    effectValue = params.acceleration;
-    effectType = 'accel';
-  } else if (params.hpRecovery !== undefined) {
-    effectValue = params.hpRecovery;
-    effectType = 'stamina';
+  for (const key of effectKeys) {
+    if (params[key] !== undefined) {
+      const iconInfo = EFFECT_ICONS[key];
+      // currentSpeed と targetSpeed が両方ある場合は targetSpeed を優先
+      if (key === 'currentSpeed' && params.targetSpeed !== undefined) {
+        continue;
+      }
+      effects.push({
+        key,
+        value: params[key],
+        icon: iconInfo.icon,
+        label: iconInfo.label,
+        className: iconInfo.className,
+      });
+    }
   }
 
   // 効果時間
   const duration = params.duration || null;
 
   return {
-    effectValue: effectValue !== null ? effectValue.toFixed(2) : null,
+    effects,
     duration: duration !== null ? duration.toFixed(1) : null,
-    effectType,
   };
 }
 

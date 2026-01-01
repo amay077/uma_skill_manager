@@ -315,14 +315,72 @@ body {
   color: var(--text-color);
 }
 
+/* 効果量エリア */
+.skill-effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-bottom: 0.5rem;
+}
+
 .skill-effect {
+  font-size: 0.75rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
   background-color: #e3f2fd;
   color: #1565c0;
+}
+
+.skill-effect.effect-speed {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
+.skill-effect.effect-accel {
+  background-color: #fff3e0;
+  color: #e65100;
+}
+
+.skill-effect.effect-recovery {
+  background-color: #e8f5e9;
+  color: #2e7d32;
 }
 
 .skill-duration {
   background-color: #f3e5f5;
   color: #7b1fa2;
+}
+
+/* 発動順位（1位〜9位）バッジ */
+.order-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.badge-label {
+  color: var(--text-muted);
+  margin-right: 0.25rem;
+}
+
+.order-badge {
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  background-color: var(--bg-color);
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.625rem;
+}
+
+.order-badge.active {
+  background-color: #4caf50;
+  color: white;
 }
 
 .skill-eval {
