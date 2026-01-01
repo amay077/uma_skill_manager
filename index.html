@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ウマ娘スキル検索</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <h1>ウマ娘スキル検索</h1>
+    </header>
+
+    <main class="main">
+      <!-- ローディングインジケータ -->
+      <div id="loading" class="loading">
+        <div class="loading-spinner"></div>
+        <p>データベースを読み込み中...</p>
+      </div>
+
+      <!-- 検索フォーム -->
+      <section id="search-section" class="search-section" style="display: none;">
+        <form id="search-form" class="search-form">
+          <!-- 基本検索 -->
+          <div class="search-basic">
+            <div class="form-group">
+              <label for="skill-name">スキル名</label>
+              <input type="text" id="skill-name" placeholder="スキル名で検索">
+            </div>
+
+            <div class="form-group">
+              <label>種別</label>
+              <div class="radio-group">
+                <label><input type="radio" name="skill-type" value="" checked> 全て</label>
+                <label><input type="radio" name="skill-type" value="unique"> 固有</label>
+                <label><input type="radio" name="skill-type" value="evolution"> 進化</label>
+                <label><input type="radio" name="skill-type" value="normal"> 通常</label>
+              </div>
+            </div>
+
+            <div class="form-group evaluation-range">
+              <label>評価点</label>
+              <div class="range-inputs">
+                <input type="number" id="eval-min" placeholder="最小" min="0">
+                <span>〜</span>
+                <input type="number" id="eval-max" placeholder="最大" min="0">
+              </div>
+            </div>
+          </div>
+
+          <!-- 詳細検索トグル -->
+          <button type="button" id="toggle-advanced" class="toggle-advanced">
+            <span class="toggle-icon">▼</span> 詳細検索を表示
+          </button>
+
+          <!-- 詳細検索パネル -->
+          <div id="advanced-panel" class="advanced-panel" style="display: none;">
+            <div class="filter-row">
+              <!-- 作戦 -->
+              <div class="filter-group">
+                <label>作戦</label>
+                <div class="checkbox-group">
+                  <label><input type="checkbox" name="running-style" value="nige"> 逃げ</label>
+                  <label><input type="checkbox" name="running-style" value="senkou"> 先行</label>
+                  <label><input type="checkbox" name="running-style" value="sashi"> 差し</label>
+                  <label><input type="checkbox" name="running-style" value="oikomi"> 追込</label>
+                </div>
+              </div>
+
+              <!-- 距離 -->
+              <div class="filter-group">
+                <label>距離</label>
+                <div class="checkbox-group">
+                  <label><input type="checkbox" name="distance" value="short"> 短距離</label>
+                  <label><input type="checkbox" name="distance" value="mile"> マイル</label>
+                  <label><input type="checkbox" name="distance" value="middle"> 中距離</label>
+                  <label><input type="checkbox" name="distance" value="long"> 長距離</label>
+                </div>
+              </div>
+
+              <!-- バ場 -->
+              <div class="filter-group">
+                <label>バ場</label>
+                <div class="checkbox-group">
+                  <label><input type="checkbox" name="ground" value="turf"> 芝</label>
+                  <label><input type="checkbox" name="ground" value="dirt"> ダート</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="filter-row">
+              <!-- フェーズ -->
+              <div class="filter-group">
+                <label>フェーズ</label>
+                <div class="checkbox-group">
+                  <label><input type="checkbox" name="phase" value="early"> 序盤</label>
+                  <label><input type="checkbox" name="phase" value="mid"> 中盤</label>
+                  <label><input type="checkbox" name="phase" value="late"> 終盤</label>
+                </div>
+              </div>
+
+              <!-- 効果種別 -->
+              <div class="filter-group">
+                <label>効果種別</label>
+                <div class="radio-group">
+                  <label><input type="radio" name="effect-type" value="" checked> 全て</label>
+                  <label><input type="radio" name="effect-type" value="speed"> 速度</label>
+                  <label><input type="radio" name="effect-type" value="accel"> 加速</label>
+                  <label><input type="radio" name="effect-type" value="stamina"> 回復</label>
+                  <label><input type="radio" name="effect-type" value="position"> 位置</label>
+                  <label><input type="radio" name="effect-type" value="debuff"> デバフ</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="filter-row">
+              <!-- 順位条件 -->
+              <div class="filter-group">
+                <label>順位条件（9人立て）</label>
+                <div class="radio-group">
+                  <label><input type="radio" name="order-range" value="" checked> 全て</label>
+                  <label><input type="radio" name="order-range" value="top1"> 1位</label>
+                  <label><input type="radio" name="order-range" value="top2"> 2位以内</label>
+                  <label><input type="radio" name="order-range" value="top4"> 4位以内</label>
+                  <label><input type="radio" name="order-range" value="top6"> 6位以内</label>
+                  <label><input type="radio" name="order-range" value="mid"> 中団</label>
+                  <label><input type="radio" name="order-range" value="back"> 後方</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="filter-row">
+              <!-- デメリット除外 -->
+              <div class="filter-group">
+                <label>
+                  <input type="checkbox" id="exclude-demerit"> デメリット効果を除外
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="search-actions">
+            <button type="submit" class="btn btn-primary">検索</button>
+            <button type="button" id="clear-btn" class="btn btn-secondary">クリア</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- 検索結果 -->
+      <section id="results-section" class="results-section" style="display: none;">
+        <div class="results-header">
+          <p id="results-count">検索結果: 0件</p>
+        </div>
+        <div id="results-list" class="results-list"></div>
+        <div id="pagination" class="pagination"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>データ提供: <a href="https://mee1080.github.io/umasim/skill/" target="_blank" rel="noopener">mee1080/umasim</a></p>
+    </footer>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
