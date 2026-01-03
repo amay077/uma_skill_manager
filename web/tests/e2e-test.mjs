@@ -361,6 +361,12 @@ async function main() {
     await testEffectTypeFilter();
     await testPagination();
     await testSkillCardDetails();
+    
+    // ページサイズ選択機能のテスト
+    await testPageSizeDefault();
+    await testPageSizeOptions();
+    await testPageSizeChange();
+    await testPageSizeResetPage();
 
   } catch (error) {
     console.log(`[FATAL] テスト実行エラー: ${error.message}`);
@@ -377,3 +383,164 @@ async function main() {
 }
 
 main();
+// テスト10: 表示件数選択（デフォルト値確認）
+async function testPageSizeDefault() {
+  const testName = '表示件数選択（デフォルト値）';
+  try {
+    log(`${testName} をテスト中...`);
+
+    // ページサイズセレクタの存在確認
+    const hasSelector = await page.evaluate(() => {
+      const selector = document.getElementById('page-size');
+      return selector !== null;
+    });
+
+    if (!hasSelector) {
+      throw new Error('表示件数セレクタが見つかりません');
+    }
+
+    // デフォルト値が 20 であることを確認
+    const defaultValue = await page.$eval('#page-size', el => el.value);
+    
+    if (defaultValue !== '20') {
+      throw new Error('デフォルト値が 20 ではありません（実際: ' + defaultValue + '）');
+    }
+
+    log('  デフォルト値: 20件');
+    pass(testName);
+  } catch (error) {
+    fail(testName, error);
+  }
+}
+
+// テスト11: 表示件数選択（オプション確認）
+async function testPageSizeOptions() {
+  const testName = '表示件数選択（オプション）';
+  try {
+    log(`${testName} をテスト中...`);
+
+    // オプションの値を取得
+    const options = await page.$$eval('#page-size option', opts => 
+      opts.map(opt => opt.value)
+    );
+
+    const expectedOptions = ['10', '20', '50', '100'];
+    const hasAllOptions = expectedOptions.every(expected => options.includes(expected));
+
+    if (!hasAllOptions) {
+      const optionsStr = options.join(', ');
+      const expectedStr = expectedOptions.join(', ');
+      throw new Error('期待されるオプションが揃っていません。期待: ' + expectedStr + ', 実際: ' + optionsStr);
+    }
+
+    log('  オプション: ' + options.join(', '));
+    pass(testName);
+  } catch (error) {
+    fail(testName, error);
+  }
+}
+
+// テスト12: 表示件数変更（50件に変更）
+async function testPageSizeChange() {
+  const testName = '表示件数選択（50件に変更）';
+  try {
+    log(`${testName} をテスト中...`);
+
+    // 変更前の表示件数を取得
+    const cardsBefore = await page.$$eval('.skill-card', cards => cards.length);
+    log('  変更前の表示件数: ' + cardsBefore + ' 件');
+
+    // 表示件数を 50 に変更
+    await page.select('#page-size', '50');
+
+    // 結果が更新されるまで待機
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // 変更後の表示件数を取得
+    const cardsAfter = await page.$$eval('.skill-card', cards => cards.length);
+    log('  変更後の表示件数: ' + cardsAfter + ' 件');
+
+    // ページサイズが変更されたことを確認
+    const newValue = await page.$eval('#page-size', el => el.value);
+    if (newValue !== '50') {
+      throw new Error('ページサイズが変更されていません（実際: ' + newValue + '）');
+    }
+
+    // 表示件数が増加したことを確認（データが十分にある場合）
+    const totalCount = await page.evaluate(() => {
+      const countText = document.getElementById('results-count').textContent;
+      const match = countText.match(/(\d+)/);
+      return match ? parseInt(match[1], 10) : 0;
+    });
+
+    // 総件数が50以上の場合、表示件数が増えたことを確認
+    if (totalCount >= 50 && cardsAfter <= cardsBefore) {
+      throw new Error('表示件数が増えていません。変更前: ' + cardsBefore + ', 変更後: ' + cardsAfter);
+    }
+
+    log('  総件数: ' + totalCount + ' 件、表示変更: ' + cardsBefore + ' → ' + cardsAfter);
+    pass(testName);
+  } catch (error) {
+    fail(testName, error);
+  }
+}
+
+// テスト13: 表示件数変更時にページがリセットされる
+async function testPageSizeResetPage() {
+  const testName = '表示件数変更時のページリセット';
+  try {
+    log(`${testName} をテスト中...`);
+
+    // 表示件数を 10 に変更して複数ページを作る
+    await page.select('#page-size', '10');
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // 2ページ目があるか確認
+    const hasSecondPage = await page.evaluate(() => {
+      const buttons = document.querySelectorAll('#pagination button');
+      for (const btn of buttons) {
+        if (btn.textContent === '2' && !btn.disabled) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    if (!hasSecondPage) {
+      log('  2ページ目が存在しないためスキップ');
+      pass(testName);
+      return;
+    }
+
+    // 2ページ目に移動
+    const secondPageBtn = await page.evaluate(() => {
+      const buttons = Array.from(document.querySelectorAll('#pagination button'));
+      return buttons.findIndex(btn => btn.textContent === '2');
+    });
+    
+    if (secondPageBtn >= 0) {
+      await page.click(`#pagination button:nth-child(${secondPageBtn + 1})`);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      log('  2ページ目に移動');
+    }
+
+    // 表示件数を 20 に変更
+    await page.select('#page-size', '20');
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // 1ページ目に戻っているか確認
+    const currentPage = await page.evaluate(() => {
+      const activeBtn = document.querySelector('#pagination button.active');
+      return activeBtn ? activeBtn.textContent : '1';
+    });
+
+    if (currentPage !== '1') {
+      throw new Error('ページがリセットされていません（現在のページ: ' + currentPage + '）');
+    }
+
+    log('  ページが1ページ目にリセットされました');
+    pass(testName);
+  } catch (error) {
+    fail(testName, error);
+  }
+}

@@ -16,6 +16,7 @@ import { getFilterState, resetFilters, hasActiveFilters, setupFilterListeners } 
 // 状態管理
 const state = {
   currentPage: 1,
+  pageSize: PAGINATION.defaultPageSize,
   totalCount: 0,
   isLoading: false,
 };
@@ -30,6 +31,7 @@ const elements = {
   clearBtn: null,
   advancedToggleMobile: null,
   advancedPanel: null,
+  pageSizeSelect: null,
 };
 
 // モバイル判定のブレークポイント
@@ -48,6 +50,7 @@ async function init() {
   elements.clearBtn = document.getElementById('clear-btn');
   elements.advancedToggleMobile = document.getElementById('advanced-toggle-mobile');
   elements.advancedPanel = document.getElementById('advanced-panel');
+  elements.pageSizeSelect = document.getElementById('page-size');
 
   try {
     // DuckDB-WASM の初期化
@@ -185,6 +188,15 @@ function setupEventListeners() {
     });
   }
 
+  // 表示件数セレクタ
+  if (elements.pageSizeSelect) {
+    elements.pageSizeSelect.addEventListener('change', async (e) => {
+      state.pageSize = parseInt(e.target.value, 10);
+      state.currentPage = 1; // ページを1にリセット
+      await performSearch();
+    });
+  }
+
   // 検索フォームの変更監視（リアルタイム検索）
   // 注: setupFormListeners 内で toggle-advanced のイベントも設定される
   setupFormListeners(debounce(async () => {
@@ -220,8 +232,8 @@ async function performSearch() {
     // 検索を実行
     const skills = await advancedSearch({
       ...options,
-      limit: PAGINATION.PAGE_SIZE,
-      offset: (state.currentPage - 1) * PAGINATION.PAGE_SIZE,
+      limit: state.pageSize,
+      offset: (state.currentPage - 1) * state.pageSize,
     });
 
     // 結果を表示
@@ -286,7 +298,7 @@ function buildSearchOptions(formValues, filterState) {
  */
 function renderResults(skills) {
   // 件数を更新
-  updateResultsCount(state.totalCount, state.currentPage, PAGINATION.PAGE_SIZE);
+  updateResultsCount(state.totalCount, state.currentPage, state.pageSize);
 
   // スキルカードを表示
   if (elements.resultsList) {
@@ -299,7 +311,7 @@ function renderResults(skills) {
     renderPagination({
       currentPage: state.currentPage,
       totalItems: state.totalCount,
-      pageSize: PAGINATION.PAGE_SIZE,
+      pageSize: state.pageSize,
       onPageChange: async (page) => {
         state.currentPage = page;
         await performSearch();

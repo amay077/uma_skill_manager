@@ -262,9 +262,41 @@ body {
 }
 
 .results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   margin-bottom: 1rem;
   color: var(--text-muted);
   font-size: 0.875rem;
+}
+
+.page-size-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.page-size-selector label {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.page-size-selector select {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--card-bg);
+  color: var(--text-color);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.page-size-selector select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.2);
 }
 
 .results-list {

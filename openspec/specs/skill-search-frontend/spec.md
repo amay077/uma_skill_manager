@@ -158,7 +158,7 @@ VanillaJS + sql.js で SQLite DB を読み込み、ウマ娘スキル検索機�
 
 #### Scenario: Navigate pages（ページ移動）
 
-- **GIVEN** 検索結果が 20 件を超える
+- **GIVEN** 検索結果がページサイズを超える
 - **WHEN** ユーザーが「次へ」ボタンをクリックする
 - **THEN** 次のページの結果が表示される
 
@@ -167,6 +167,21 @@ VanillaJS + sql.js で SQLite DB を読み込み、ウマ娘スキル検索機�
 - **GIVEN** 検索が実行された
 - **WHEN** 結果一覧が表示される
 - **THEN** 総件数と現在表示中の件数範囲が表示される
+
+#### Scenario: Select page size（表示件数選択）
+
+- **GIVEN** ユーザーが検索結果を表示している
+- **WHEN** 表示件数ドロップダウンで件数を選択する
+- **THEN** 選択した件数で結果が再表示される
+- **AND** ページは1ページ目にリセットされる
+- **AND** ページネーションが新しい件数に基づいて更新される
+
+#### Scenario: Page size options（表示件数オプション）
+
+- **GIVEN** 検索結果が表示されている
+- **WHEN** 表示件数ドロップダウンを確認する
+- **THEN** 10, 20, 50, 100, 300 の選択肢が表示される
+- **AND** デフォルト値は 20 が選択されている
 
 ### Requirement: Responsive Design（レスポンシブデザイン）
 
@@ -225,3 +240,4 @@ VanillaJS + sql.js で SQLite DB を読み込み、ウマ娘スキル検索機�
 - [2026-01-01-USM-006-add-skill-search-frontend](../../changes/archive/2026-01-01-USM-006-add-skill-search-frontend/proposal.md)
 - [2026-01-03-USM-007-enhance-skill-search-ui](../../changes/archive/2026-01-03-USM-007-enhance-skill-search-ui/proposal.md)
 - [2026-01-03-USM-010_improve-responsive-design](../../changes/archive/2026-01-03-USM-010_improve-responsive-design/proposal.md)
+- [2026-01-03-USM-011_add-page-size-selector](../../changes/archive/2026-01-03-USM-011_add-page-size-selector/proposal.md)
