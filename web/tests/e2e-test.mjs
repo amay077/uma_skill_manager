@@ -128,19 +128,16 @@ async function testInitialResults() {
   }
 }
 
-// テスト3: スキル名検索
+// テスト3: スキル名検索（リアルタイム検索）
 async function testNameSearch() {
   const testName = 'スキル名検索';
   try {
     log(`${testName} をテスト中...`);
 
-    // スキル名を入力
+    // スキル名を入力（リアルタイム検索がデバウンス300msで発火）
     await page.type('#skill-name', '電光');
 
-    // 検索ボタンをクリック
-    await page.click('button[type="submit"]');
-
-    // 結果が更新されるまで待機
+    // 結果が更新されるまで待機（デバウンス + 検索処理を考慮）
     await page.waitForFunction(() => {
       const cards = document.querySelectorAll('.skill-card');
       if (cards.length === 0) return false;

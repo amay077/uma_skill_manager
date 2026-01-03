@@ -72,25 +72,20 @@ export function isAdvancedSearchActive() {
  */
 export function setupFormListeners(onSearch) {
   const form = document.getElementById('search-form');
-  const clearBtn = document.getElementById('clear-btn');
 
-  // フォーム送信
+  // フォーム送信（Enter キー等）
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     onSearch();
   });
 
-  // クリアボタン
-  clearBtn.addEventListener('click', () => {
-    clearForm();
-    onSearch();
-  });
+  // テキスト入力のリアルタイム検索
+  document.getElementById('skill-name').addEventListener('input', onSearch);
+  document.getElementById('eval-min').addEventListener('input', onSearch);
+  document.getElementById('eval-max').addEventListener('input', onSearch);
 
-  // Enter キーで検索
-  document.getElementById('skill-name').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      onSearch();
-    }
+  // 種別チェックボックスの変更
+  document.querySelectorAll('input[name="skill-type"]').forEach(cb => {
+    cb.addEventListener('change', onSearch);
   });
 }
