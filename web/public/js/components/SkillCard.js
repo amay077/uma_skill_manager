@@ -232,7 +232,18 @@ function renderDetails(skill) {
  * @param {HTMLElement} container - 描画先のコンテナ
  */
 export function renderSkillCards(skills, container) {
-  container.innerHTML = skills.map(renderSkillCard).join('');
+  // skill_id でグループ化（同じスキルが複数バリアントで重複表示されるのを防ぐ）
+  const uniqueSkills = [];
+  const seenIds = new Set();
+
+  for (const skill of skills) {
+    if (!seenIds.has(skill.id)) {
+      uniqueSkills.push(skill);
+      seenIds.add(skill.id);
+    }
+  }
+
+  container.innerHTML = uniqueSkills.map(renderSkillCard).join('');
 
   // 詳細トグルのイベントリスナーを設定
   container.querySelectorAll('.skill-details-toggle').forEach(btn => {

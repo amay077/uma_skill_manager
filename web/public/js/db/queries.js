@@ -291,7 +291,7 @@ function buildTypeCondition(subTypes) {
 
 /**
  * ビットフラグ条件を生成（統一ロジック）
- * 全チェック ON = 全チェック OFF → ビットフラグが全て 1 のスキルを検索
+ * 全チェック ON = 全チェック OFF → 条件なし（全スキル対象）
  * 一部チェック → チェックされたビット位置が 1 のスキルを OR 検索
  * @param {Array<string>} values - 選択された値の配列
  * @param {string} flagColumn - フラグカラム名
@@ -310,10 +310,9 @@ function buildBitFlagCondition(values, flagColumn, flagLength) {
   const indexMap = indexMaps[flagColumn];
   if (!indexMap) return null;
 
-  // 全チェック ON = 全チェック OFF → ビットフラグが全て 1 のスキルを検索
+  // 全チェック ON = 全チェック OFF → 条件なし（全スキル対象）
   if (!values || values.length === 0 || values.length === flagLength) {
-    const allOnes = '1'.repeat(flagLength);
-    return `sev.${flagColumn} = '${allOnes}'`;
+    return null;
   }
 
   // 一部チェック → チェックされたビット位置が 1 のスキルを OR 検索
@@ -379,15 +378,15 @@ function buildEffectTypesCondition(effectTypes) {
 
 /**
  * 順位条件を生成（個別チェックボックス対応）
- * 全チェック ON = 全チェック OFF → ビットフラグが全て 1 のスキルを検索
+ * 全チェック ON = 全チェック OFF → 条件なし（全スキル対象）
  * 一部チェック → チェックされた順位のビット位置が 1 のスキルを OR 検索
  * @param {Array<string>} orders - 順位配列 ['1', '2', '3', ...]
  * @returns {string|null} SQL 条件
  */
 function buildOrdersCondition(orders) {
-  // 全チェック ON = 全チェック OFF → ビットフラグが全て 1 のスキルを検索
+  // 全チェック ON = 全チェック OFF → 条件なし（全スキル対象）
   if (!orders || orders.length === 0 || orders.length === 9) {
-    return `sev.order_flags = '111111111'`;
+    return null;
   }
 
   // 一部チェック → チェックされた順位のビット位置が 1 のスキルを OR 検索

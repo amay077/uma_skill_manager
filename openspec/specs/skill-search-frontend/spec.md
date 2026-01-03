@@ -91,6 +91,44 @@ VanillaJS + sql.js で SQLite DB を読み込み、ウマ娘スキル検索機�
 - **WHEN** 「デメリット除外」オプションを有効にし検索する
 - **THEN** デメリット効果を持つスキルが結果から除外される
 
+### Requirement: Filter Logic（フィルタロジック）
+
+システムはフィルタ条件の適用ルールを以下のように処理しなければならない（SHALL）。
+
+#### Scenario: No filter selected（フィルタ未選択時）
+
+- **GIVEN** ユーザーがフィルタを選択していない（全チェック OFF）
+- **WHEN** 検索を実行する
+- **THEN** そのフィルタ条件は適用されず、全スキルが検索対象となる
+
+#### Scenario: All filters selected（全フィルタ選択時）
+
+- **GIVEN** ユーザーが全てのフィルタを選択している（全チェック ON）
+- **WHEN** 検索を実行する
+- **THEN** 全チェック OFF と同じ挙動となり、全スキルが検索対象となる
+
+#### Scenario: Partial filter selected（一部フィルタ選択時）
+
+- **GIVEN** ユーザーが一部のフィルタのみを選択している
+- **WHEN** 検索を実行する
+- **THEN** 選択された条件のいずれかを満たすスキルが検索対象となる（OR 検索）
+
+#### Scenario: Multiple filter categories（複数カテゴリのフィルタ）
+
+- **GIVEN** ユーザーが複数カテゴリでフィルタを選択している（例: 作戦と距離）
+- **WHEN** 検索を実行する
+- **THEN** 各カテゴリの条件を全て満たすスキルが検索対象となる（AND 検索）
+
+### Requirement: Unique Skill Display（スキル重複排除）
+
+システムは同一スキルの重複表示を防止しなければならない（SHALL）。
+
+#### Scenario: Skill with multiple variants（複数バリアントを持つスキル）
+
+- **GIVEN** 1 つのスキルが複数の効果バリアントを持つ
+- **WHEN** 検索結果が表示される
+- **THEN** そのスキルは 1 行のみ表示される（最初のバリアントの情報を使用）
+
 ### Requirement: Skill Card Display（スキルカード表示）
 
 システムは検索結果をスキルカード形式で表示しなければならない（SHALL）。
@@ -152,3 +190,4 @@ VanillaJS + sql.js で SQLite DB を読み込み、ウマ娘スキル検索機�
 ## Related Changes
 
 - [2026-01-01-USM-006-add-skill-search-frontend](../../changes/archive/2026-01-01-USM-006-add-skill-search-frontend/proposal.md)
+- [2026-01-03-USM-007-enhance-skill-search-ui](../../changes/archive/2026-01-03-USM-007-enhance-skill-search-ui/proposal.md)
