@@ -98,15 +98,6 @@ function showError(message) {
  * イベントリスナーの設定
  */
 function setupEventListeners() {
-  // 検索フォームの送信
-  if (elements.searchForm) {
-    elements.searchForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      state.currentPage = 1;
-      await performSearch();
-    });
-  }
-
   // クリアボタン
   if (elements.clearBtn) {
     elements.clearBtn.addEventListener('click', async () => {
@@ -138,7 +129,6 @@ async function performSearch() {
   if (state.isLoading) return;
 
   state.isLoading = true;
-  setLoadingState(true);
 
   try {
     const formValues = getFormValues();
@@ -171,7 +161,6 @@ async function performSearch() {
     }
   } finally {
     state.isLoading = false;
-    setLoadingState(false);
   }
 }
 
@@ -241,18 +230,6 @@ function renderResults(skills) {
         elements.resultsSection?.scrollIntoView({ behavior: 'smooth' });
       }
     }, paginationContainer);
-  }
-}
-
-/**
- * ローディング状態を設定
- * @param {boolean} isLoading - ローディング中かどうか
- */
-function setLoadingState(isLoading) {
-  const submitBtn = elements.searchForm?.querySelector('button[type="submit"]');
-  if (submitBtn) {
-    submitBtn.disabled = isLoading;
-    submitBtn.textContent = isLoading ? '検索中...' : '検索';
   }
 }
 
