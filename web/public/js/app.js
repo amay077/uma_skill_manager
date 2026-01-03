@@ -28,7 +28,12 @@ const elements = {
   searchForm: null,
   resultsList: null,
   clearBtn: null,
+  advancedToggleMobile: null,
+  advancedPanel: null,
 };
+
+// モバイル判定のブレークポイント
+const MOBILE_BREAKPOINT = 767;
 
 /**
  * アプリケーションの初期化
@@ -41,6 +46,8 @@ async function init() {
   elements.searchForm = document.getElementById('search-form');
   elements.resultsList = document.getElementById('results-list');
   elements.clearBtn = document.getElementById('clear-btn');
+  elements.advancedToggleMobile = document.getElementById('advanced-toggle-mobile');
+  elements.advancedPanel = document.getElementById('advanced-panel');
 
   try {
     // DuckDB-WASM の初期化
@@ -53,6 +60,9 @@ async function init() {
 
     // UI を表示
     showUI();
+
+    // モバイル用折りたたみ機能の初期化
+    initMobileAdvancedPanel();
 
     // イベントリスナーの設定
     setupEventListeners();
@@ -91,6 +101,73 @@ function showError(message) {
         <p>⚠️ ${message}</p>
       </div>
     `;
+  }
+}
+
+/**
+ * モバイルかどうかを判定
+ * @returns {boolean} モバイルの場合 true
+ */
+function isMobile() {
+  return window.innerWidth <= MOBILE_BREAKPOINT;
+}
+
+/**
+ * モバイル用詳細パネルの初期化
+ */
+function initMobileAdvancedPanel() {
+  if (!elements.advancedToggleMobile || !elements.advancedPanel) return;
+
+  // モバイルの場合は初期状態で折りたたみ
+  if (isMobile()) {
+    elements.advancedPanel.classList.add('collapsed');
+    elements.advancedToggleMobile.classList.remove('expanded');
+  }
+
+  // トグルボタンのクリックイベント
+  elements.advancedToggleMobile.addEventListener('click', () => {
+    toggleAdvancedPanel();
+  });
+
+  // 画面サイズ変更時の対応
+  window.addEventListener('resize', debounce(() => {
+    handleResize();
+  }, 100));
+}
+
+/**
+ * 詳細パネルの展開・折りたたみを切り替え
+ */
+function toggleAdvancedPanel() {
+  if (!elements.advancedToggleMobile || !elements.advancedPanel) return;
+
+  const isCollapsed = elements.advancedPanel.classList.contains('collapsed');
+
+  if (isCollapsed) {
+    // 展開
+    elements.advancedPanel.classList.remove('collapsed');
+    elements.advancedToggleMobile.classList.add('expanded');
+  } else {
+    // 折りたたみ
+    elements.advancedPanel.classList.add('collapsed');
+    elements.advancedToggleMobile.classList.remove('expanded');
+  }
+}
+
+/**
+ * 画面サイズ変更時の処理
+ */
+function handleResize() {
+  if (!elements.advancedPanel) return;
+
+  if (isMobile()) {
+    // モバイル: 折りたたみ状態を維持（何もしない）
+  } else {
+    // デスクトップ/タブレット: 常に展開
+    elements.advancedPanel.classList.remove('collapsed');
+    if (elements.advancedToggleMobile) {
+      elements.advancedToggleMobile.classList.remove('expanded');
+    }
   }
 }
 

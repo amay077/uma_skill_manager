@@ -170,24 +170,58 @@ VanillaJS + sql.js で SQLite DB を読み込み、ウマ娘スキル検索機�
 
 ### Requirement: Responsive Design（レスポンシブデザイン）
 
-システムはモバイルデバイスでも適切に表示されなければならない（SHALL）。
+システムはモバイルデバイス及びタブレットデバイスでも適切に表示されなければならない（SHALL）。
+
+#### Scenario: Desktop layout（デスクトップレイアウト）
+
+- **GIVEN** ユーザーが 1025px 以上の画面幅でアクセスしている
+- **WHEN** ページが表示される
+- **THEN** フィルタ行が 2 列グリッドで表示される
+- **AND** 順位チェックボックスが 9 列で表示される
+- **AND** 詳細検索パネルは常に展開状態で表示される
+
+#### Scenario: Tablet layout（タブレットレイアウト）
+
+- **GIVEN** ユーザーが 768px〜1024px の画面幅でアクセスしている
+- **WHEN** ページが表示される
+- **THEN** フィルタ行が 2 列グリッドで表示される（間隔縮小）
+- **AND** 順位チェックボックスが 9 列で表示される（フォントサイズ縮小）
+- **AND** 詳細検索パネルは常に展開状態で表示される
 
 #### Scenario: Mobile layout（モバイルレイアウト）
 
-- **GIVEN** ユーザーがモバイルデバイスでアクセスしている
+- **GIVEN** ユーザーが 767px 以下の画面幅でアクセスしている
 - **WHEN** ページが表示される
-- **THEN** 画面幅に応じたレイアウトで表示される
-- **AND** 検索フォームが縦並びで表示される
+- **THEN** フィルタ行が 1 列で表示される
+- **AND** 作戦・距離等のチェックボックスが 2 列グリッドで表示される
+- **AND** 順位チェックボックスが 3 列グリッドで表示される
 - **AND** スキルカードが 1 列で表示される
 
 #### Scenario: Filter panel toggle（フィルタパネル折りたたみ）
 
-- **GIVEN** ユーザーがモバイルデバイスでアクセスしている
-- **WHEN** ページが表示される
+- **GIVEN** ユーザーが 767px 以下の画面幅でアクセスしている
+- **WHEN** ページが初期表示される
 - **THEN** 詳細検索パネルは初期状態で折りたたまれている
-- **AND** タップで展開・折りたたみが可能である
+- **AND** 「詳細検索条件」ボタンが表示される
+
+#### Scenario: Filter panel expand（フィルタパネル展開）
+
+- **GIVEN** ユーザーが 767px 以下の画面幅でアクセスしている
+- **AND** 詳細検索パネルが折りたたまれている
+- **WHEN** 「詳細検索条件」ボタンをタップする
+- **THEN** 詳細検索パネルが展開される
+- **AND** ボタンのアイコンが上向き矢印に変わる
+
+#### Scenario: Filter panel collapse（フィルタパネル折りたたみ）
+
+- **GIVEN** ユーザーが 767px 以下の画面幅でアクセスしている
+- **AND** 詳細検索パネルが展開されている
+- **WHEN** 「詳細検索条件」ボタンをタップする
+- **THEN** 詳細検索パネルが折りたたまれる
+- **AND** ボタンのアイコンが下向き矢印に変わる
 
 ## Related Changes
 
 - [2026-01-01-USM-006-add-skill-search-frontend](../../changes/archive/2026-01-01-USM-006-add-skill-search-frontend/proposal.md)
 - [2026-01-03-USM-007-enhance-skill-search-ui](../../changes/archive/2026-01-03-USM-007-enhance-skill-search-ui/proposal.md)
+- [2026-01-03-USM-010_improve-responsive-design](../../changes/archive/2026-01-03-USM-010_improve-responsive-design/proposal.md)
