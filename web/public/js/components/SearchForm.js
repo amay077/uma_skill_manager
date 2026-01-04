@@ -89,3 +89,77 @@ export function setupFormListeners(onSearch) {
     cb.addEventListener('change', onSearch);
   });
 }
+
+/**
+ * 保存された条件をフォームに復元
+ * @param {object} conditions - 復元する条件オブジェクト
+ */
+export function restoreFormValues(conditions) {
+  if (!conditions) return;
+
+  // 既知の条件キー
+  const knownKeys = [
+    'name', 'types', 'minEvaluationPoint', 'maxEvaluationPoint',
+    'runningStyles', 'distances', 'grounds', 'phases',
+    'effectTypes', 'orders', 'excludeDemerit'
+  ];
+
+  // 不明な条件キーをチェック
+  const unknownKeys = Object.keys(conditions).filter(key => !knownKeys.includes(key));
+  if (unknownKeys.length > 0) {
+    console.warn('不明な条件項目をスキップしました:', unknownKeys);
+  }
+
+  // スキル名
+  if (conditions.name !== undefined) {
+    const skillNameInput = document.getElementById('skill-name');
+    if (skillNameInput) {
+      skillNameInput.value = conditions.name;
+    }
+  }
+
+  // 評価点
+  if (conditions.minEvaluationPoint !== undefined) {
+    const evalMinInput = document.getElementById('eval-min');
+    if (evalMinInput) {
+      evalMinInput.value = conditions.minEvaluationPoint;
+    }
+  }
+  if (conditions.maxEvaluationPoint !== undefined) {
+    const evalMaxInput = document.getElementById('eval-max');
+    if (evalMaxInput) {
+      evalMaxInput.value = conditions.maxEvaluationPoint;
+    }
+  }
+
+  // チェックボックス系を復元
+  restoreCheckboxGroup('skill-type', conditions.types);
+  restoreCheckboxGroup('running-style', conditions.runningStyles);
+  restoreCheckboxGroup('distance', conditions.distances);
+  restoreCheckboxGroup('ground', conditions.grounds);
+  restoreCheckboxGroup('phase', conditions.phases);
+  restoreCheckboxGroup('effect-type', conditions.effectTypes);
+  restoreCheckboxGroup('order', conditions.orders);
+
+  // デバフ除外
+  if (conditions.excludeDemerit !== undefined) {
+    const excludeDemeritCheckbox = document.getElementById('exclude-demerit');
+    if (excludeDemeritCheckbox) {
+      excludeDemeritCheckbox.checked = conditions.excludeDemerit;
+    }
+  }
+}
+
+/**
+ * チェックボックスグループを復元
+ * @param {string} name - チェックボックスの name 属性
+ * @param {Array<string>} values - 選択する値の配列
+ */
+function restoreCheckboxGroup(name, values) {
+  if (!values || !Array.isArray(values)) return;
+
+  const checkboxes = document.querySelectorAll(`input[name="${name}"]`);
+  checkboxes.forEach(cb => {
+    cb.checked = values.includes(cb.value);
+  });
+}

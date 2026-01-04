@@ -8,7 +8,15 @@
 import { initDatabase } from './db/init.js';
 import { advancedSearch, countAdvancedSearch } from './db/queries.js';
 import { PAGINATION } from './db/constants.js';
-import { getFormValues, clearForm, setupFormListeners } from './components/SearchForm.js';
+import { getFormValues, clearForm, setupFormListeners, restoreFormValues } from './components/SearchForm.js';
+import {
+  isStorageAvailable,
+  getSavedConditions,
+  saveCondition,
+  deleteCondition,
+  getConditionByName,
+  conditionNameExists,
+} from './components/SavedSearchManager.js';
 import { renderSkillCards } from './components/SkillCard.js';
 import { renderPagination, updateResultsCount } from './components/Pagination.js';
 import { getFilterState, resetFilters, hasActiveFilters, setupFilterListeners } from './components/FilterPanel.js';
@@ -32,6 +40,9 @@ const elements = {
   advancedToggleMobile: null,
   advancedPanel: null,
   pageSizeSelect: null,
+  saveConditionBtn: null,
+  savedConditionsSelect: null,
+  deleteConditionBtn: null,
 };
 
 // モバイル判定のブレークポイント
@@ -51,6 +62,9 @@ async function init() {
   elements.advancedToggleMobile = document.getElementById('advanced-toggle-mobile');
   elements.advancedPanel = document.getElementById('advanced-panel');
   elements.pageSizeSelect = document.getElementById('page-size');
+  elements.saveConditionBtn = document.getElementById('save-condition-btn');
+  elements.savedConditionsSelect = document.getElementById('saved-conditions-select');
+  elements.deleteConditionBtn = document.getElementById('delete-condition-btn');
 
   try {
     // DuckDB-WASM の初期化
@@ -66,6 +80,9 @@ async function init() {
 
     // モバイル用折りたたみ機能の初期化
     initMobileAdvancedPanel();
+
+    // 保存済み条件 UI の初期化
+    initSavedConditionsUI();
 
     // イベントリスナーの設定
     setupEventListeners();
@@ -183,6 +200,10 @@ function setupEventListeners() {
     elements.clearBtn.addEventListener('click', async () => {
       clearForm();
       resetFilters();
+      // 保存済み条件のセレクトボックスもリセット
+      if (elements.savedConditionsSelect) {
+        elements.savedConditionsSelect.value = '';
+      }
       state.currentPage = 1;
       await performSearch();
     });
@@ -209,6 +230,21 @@ function setupEventListeners() {
     state.currentPage = 1;
     await performSearch();
   }, 300));
+
+  // 保存ボタン
+  if (elements.saveConditionBtn) {
+    elements.saveConditionBtn.addEventListener('click', handleSaveCondition);
+  }
+
+  // 保存済み条件の選択
+  if (elements.savedConditionsSelect) {
+    elements.savedConditionsSelect.addEventListener('change', handleSelectCondition);
+  }
+
+  // 削除ボタン
+  if (elements.deleteConditionBtn) {
+    elements.deleteConditionBtn.addEventListener('click', handleDeleteCondition);
+  }
 }
 
 /**
@@ -338,6 +374,178 @@ function debounce(func, wait) {
       func.apply(this, args);
     }, wait);
   };
+}
+
+/**
+ * 保存済み条件 UI の初期化
+ */
+function initSavedConditionsUI() {
+  // localStorage が利用できない場合は保存機能を無効化
+  if (!isStorageAvailable()) {
+    if (elements.saveConditionBtn) {
+      elements.saveConditionBtn.disabled = true;
+      elements.saveConditionBtn.title = 'ブラウザの設定により検索条件を保存できません。';
+    }
+    return;
+  }
+
+  // 保存済み条件をセレクトボックスに反映
+  refreshSavedConditionsSelect();
+}
+
+/**
+ * 保存済み条件セレクトボックスを更新
+ */
+function refreshSavedConditionsSelect() {
+  if (!elements.savedConditionsSelect) return;
+
+  const savedConditions = getSavedConditions();
+
+  // 既存のオプションをクリア（最初の placeholder 以外）
+  while (elements.savedConditionsSelect.options.length > 1) {
+    elements.savedConditionsSelect.remove(1);
+  }
+
+  // 保存済み条件を追加
+  savedConditions.forEach(item => {
+    const option = document.createElement('option');
+    option.value = item.name;
+    option.textContent = item.name;
+    elements.savedConditionsSelect.appendChild(option);
+  });
+
+  // 削除ボタンの状態を更新
+  updateDeleteButtonState();
+}
+
+/**
+ * 削除ボタンの有効/無効を更新
+ */
+function updateDeleteButtonState() {
+  if (!elements.deleteConditionBtn || !elements.savedConditionsSelect) return;
+
+  const hasSelection = elements.savedConditionsSelect.value !== '';
+  elements.deleteConditionBtn.disabled = !hasSelection;
+}
+
+/**
+ * 条件保存の処理
+ */
+function handleSaveCondition() {
+  if (!isStorageAvailable()) {
+    alert('ブラウザの設定により検索条件を保存できません。');
+    return;
+  }
+
+  const name = prompt('条件名を入力してください:');
+
+  // キャンセルされた場合
+  if (name === null) {
+    return;
+  }
+
+  const trimmedName = name.trim();
+  if (!trimmedName) {
+    alert('条件名を入力してください。');
+    return;
+  }
+
+  // 重複チェック
+  if (conditionNameExists(trimmedName)) {
+    const confirmOverwrite = confirm(`「${trimmedName}」は既に存在します。上書きしますか？`);
+    if (!confirmOverwrite) {
+      return;
+    }
+  }
+
+  // 現在の検索条件を取得
+  const formValues = getFormValues();
+  const filterState = getFilterState();
+
+  const conditions = {
+    name: formValues.name,
+    types: formValues.types,
+    minEvaluationPoint: formValues.minEvaluationPoint,
+    maxEvaluationPoint: formValues.maxEvaluationPoint,
+    runningStyles: filterState.runningStyles,
+    distances: filterState.distances,
+    grounds: filterState.grounds,
+    phases: filterState.phases,
+    effectTypes: filterState.effectTypes,
+    orders: filterState.orders,
+    excludeDemerit: filterState.excludeDemerit,
+  };
+
+  const result = saveCondition(trimmedName, conditions);
+
+  if (result.success) {
+    refreshSavedConditionsSelect();
+    // 保存した条件を選択状態にする
+    if (elements.savedConditionsSelect) {
+      elements.savedConditionsSelect.value = trimmedName;
+      updateDeleteButtonState();
+    }
+  } else {
+    alert(result.error);
+  }
+}
+
+/**
+ * 条件選択時の処理
+ */
+async function handleSelectCondition() {
+  const selectedName = elements.savedConditionsSelect?.value;
+
+  // 削除ボタンの状態を更新
+  updateDeleteButtonState();
+
+  if (!selectedName) {
+    return;
+  }
+
+  const conditions = getConditionByName(selectedName);
+  if (!conditions) {
+    alert('条件の読み込みに失敗しました。');
+    return;
+  }
+
+  // フォームをクリアしてから復元
+  clearForm();
+  resetFilters();
+  restoreFormValues(conditions);
+
+  // 検索を実行
+  state.currentPage = 1;
+  await performSearch();
+}
+
+/**
+ * 条件削除時の処理
+ */
+function handleDeleteCondition() {
+  const selectedName = elements.savedConditionsSelect?.value;
+
+  if (!selectedName) {
+    return;
+  }
+
+  const confirmDelete = confirm(`「${selectedName}」を削除しますか？`);
+  if (!confirmDelete) {
+    return;
+  }
+
+  const result = deleteCondition(selectedName);
+
+  if (result.success) {
+    refreshSavedConditionsSelect();
+    // セレクトボックスをリセット
+    if (elements.savedConditionsSelect) {
+      elements.savedConditionsSelect.value = '';
+      updateDeleteButtonState();
+    }
+  } else {
+    alert(result.error);
+  }
 }
 
 // DOM 読み込み完了時に初期化
