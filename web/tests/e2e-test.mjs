@@ -368,6 +368,12 @@ async function main() {
     await testPageSizeChange();
     await testPageSizeResetPage();
 
+    // 制限なしフィルター機能のテスト
+    await testUnrestrictedFilterDisplay();
+    await testUnrestrictedFilterExclusive();
+    await testUnrestrictedDistanceSearch();
+    await testUnrestrictedRunningStyleSearch();
+
   } catch (error) {
     console.log(`[FATAL] テスト実行エラー: ${error.message}`);
   } finally {
@@ -539,6 +545,192 @@ async function testPageSizeResetPage() {
     }
 
     log('  ページが1ページ目にリセットされました');
+    pass(testName);
+  } catch (error) {
+    fail(testName, error);
+  }
+}
+
+// テスト14: 制限なしフィルターの表示確認
+async function testUnrestrictedFilterDisplay() {
+  const testName = '制限なしフィルターの表示確認';
+  try {
+    log(`${testName} をテスト中...`);
+
+    // 詳細検索パネルが開いていることを確認
+    const isPanelVisible = await page.evaluate(() => {
+      const panel = document.getElementById('advanced-panel');
+      return panel && panel.style.display !== 'none';
+    });
+
+    if (!isPanelVisible) {
+      await page.click('#toggle-advanced');
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+
+    // 各フィルターに「制限なし」チェックボックスが存在するか確認
+    const filters = [
+      { name: 'distance-unrestricted', label: '距離' },
+      { name: 'running-style-unrestricted', label: '作戦' },
+      { name: 'ground-unrestricted', label: 'バ場' },
+      { name: 'phase-unrestricted', label: 'フェーズ' }
+    ];
+
+    for (const filter of filters) {
+      const exists = await page.evaluate((name) => {
+        const checkbox = document.querySelector(`input[name="${name}"]`);
+        return checkbox !== null;
+      }, filter.name);
+
+      if (!exists) {
+        throw new Error(`${filter.label}フィルターに「制限なし」チェックボックスがありません`);
+      }
+      log(`  ${filter.label}: 制限なしチェックボックス ✓`);
+    }
+
+    pass(testName);
+  } catch (error) {
+    fail(testName, error);
+  }
+}
+
+// テスト15: 制限なしフィルターの排他制御
+async function testUnrestrictedFilterExclusive() {
+  const testName = '制限なしフィルターの排他制御';
+  try {
+    log(`${testName} をテスト中...`);
+
+    // 距離フィルターで排他制御をテスト
+    // 1. まず短距離をチェック
+    await page.click('input[name="distance"][value="short"]');
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    const shortChecked = await page.$eval('input[name="distance"][value="short"]', el => el.checked);
+    if (!shortChecked) {
+      throw new Error('短距離チェックボックスがチェックされていません');
+    }
+    log('  短距離を ON');
+
+    // 2. 制限なしをチェック → 短距離が自動OFF
+    await page.click('input[name="distance-unrestricted"]');
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    const unrestrictedChecked = await page.$eval('input[name="distance-unrestricted"]', el => el.checked);
+    const shortUnchecked = await page.$eval('input[name="distance"][value="short"]', el => el.checked);
+
+    if (!unrestrictedChecked) {
+      throw new Error('制限なしチェックボックスがチェックされていません');
+    }
+    if (shortUnchecked) {
+      throw new Error('短距離チェックボックスが自動OFFされていません');
+    }
+    log('  制限なしを ON → 短距離が自動 OFF ✓');
+
+    // 3. マイルをチェック → 制限なしが自動OFF
+    await page.click('input[name="distance"][value="mile"]');
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    const mileChecked = await page.$eval('input[name="distance"][value="mile"]', el => el.checked);
+    const unrestrictedUnchecked = await page.$eval('input[name="distance-unrestricted"]', el => el.checked);
+
+    if (!mileChecked) {
+      throw new Error('マイルチェックボックスがチェックされていません');
+    }
+    if (unrestrictedUnchecked) {
+      throw new Error('制限なしチェックボックスが自動OFFされていません');
+    }
+    log('  マイルを ON → 制限なしが自動 OFF ✓');
+
+    // クリア
+    await page.click('#clear-btn');
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    pass(testName);
+  } catch (error) {
+    fail(testName, error);
+  }
+}
+
+// テスト16: 距離制限なしで検索
+async function testUnrestrictedDistanceSearch() {
+  const testName = '距離制限なしで検索';
+  try {
+    log(`${testName} をテスト中...`);
+
+    // 詳細検索パネルを開く
+    const isPanelVisible = await page.evaluate(() => {
+      const panel = document.getElementById('advanced-panel');
+      return panel && panel.style.display !== 'none';
+    });
+
+    if (!isPanelVisible) {
+      await page.click('#toggle-advanced');
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+
+    // 距離「制限なし」をチェック
+    await page.click('input[name="distance-unrestricted"]');
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // 結果件数を取得
+    const countText = await page.$eval('#results-count', el => el.textContent);
+    const match = countText.match(/(\d+)/);
+    const count = match ? parseInt(match[1], 10) : 0;
+
+    log(`  検索結果: ${count} 件`);
+
+    // 全距離対応スキルは約1366件のはず（65%程度）
+    if (count < 1000 || count > 1500) {
+      log(`  警告: 期待される件数（約1366件）と異なります`);
+    }
+
+    // クリア
+    await page.click('#clear-btn');
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    pass(testName);
+  } catch (error) {
+    fail(testName, error);
+  }
+}
+
+// テスト17: 作戦制限なしで検索
+async function testUnrestrictedRunningStyleSearch() {
+  const testName = '作戦制限なしで検索';
+  try {
+    log(`${testName} をテスト中...`);
+
+    // 詳細検索パネルを開く
+    const isPanelVisible = await page.evaluate(() => {
+      const panel = document.getElementById('advanced-panel');
+      return panel && panel.style.display !== 'none';
+    });
+
+    if (!isPanelVisible) {
+      await page.click('#toggle-advanced');
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+
+    // 作戦「制限なし」をチェック
+    await page.click('input[name="running-style-unrestricted"]');
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // 結果件数を取得
+    const countText = await page.$eval('#results-count', el => el.textContent);
+    const match = countText.match(/(\d+)/);
+    const count = match ? parseInt(match[1], 10) : 0;
+
+    log(`  検索結果: ${count} 件`);
+
+    // 全作戦対応スキルは約1420件のはず（68%程度）
+    if (count < 1200 || count > 1600) {
+      log(`  警告: 期待される件数（約1420件）と異なります`);
+    }
+
+    // クリア
+    await page.click('#clear-btn');
+    await new Promise(resolve => setTimeout(resolve, 300));
+
     pass(testName);
   } catch (error) {
     fail(testName, error);

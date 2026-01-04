@@ -315,9 +315,13 @@ function buildSearchOptions(formValues, filterState) {
 
   // 詳細フィルタ（すべて配列で渡す）
   options.runningStyles = filterState.runningStyles;
+  options.runningStyleUnrestricted = filterState.runningStyleUnrestricted;
   options.distances = filterState.distances;
+  options.distanceUnrestricted = filterState.distanceUnrestricted;
   options.grounds = filterState.grounds;
+  options.groundUnrestricted = filterState.groundUnrestricted;
   options.phases = filterState.phases;
+  options.phaseUnrestricted = filterState.phaseUnrestricted;
   options.effectTypes = filterState.effectTypes;
   options.orders = filterState.orders;
 

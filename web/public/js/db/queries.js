@@ -117,19 +117,19 @@ export async function advancedSearch(options = {}) {
   }
 
   // 作戦条件（ビットフラグ）
-  const styleCondition = buildBitFlagCondition(options.runningStyles, 'running_style_flags', 4);
+  const styleCondition = buildBitFlagCondition(options.runningStyles, 'running_style_flags', 4, options.runningStyleUnrestricted);
   if (styleCondition) conditions.push(styleCondition);
 
   // 距離条件（ビットフラグ）
-  const distCondition = buildBitFlagCondition(options.distances, 'distance_flags', 4);
+  const distCondition = buildBitFlagCondition(options.distances, 'distance_flags', 4, options.distanceUnrestricted);
   if (distCondition) conditions.push(distCondition);
 
   // バ場条件（ビットフラグ）
-  const groundCondition = buildBitFlagCondition(options.grounds, 'ground_flags', 2);
+  const groundCondition = buildBitFlagCondition(options.grounds, 'ground_flags', 2, options.groundUnrestricted);
   if (groundCondition) conditions.push(groundCondition);
 
   // フェーズ条件（ビットフラグ）
-  const phaseCondition = buildBitFlagCondition(options.phases, 'phase_flags', 3);
+  const phaseCondition = buildBitFlagCondition(options.phases, 'phase_flags', 3, options.phaseUnrestricted);
   if (phaseCondition) conditions.push(phaseCondition);
 
   // 効果種別条件（配列対応、OR検索）
@@ -206,16 +206,16 @@ export async function countAdvancedSearch(options = {}) {
     conditions.push('sev.is_demerit = 0');
   }
 
-  const styleCondition = buildBitFlagCondition(options.runningStyles, 'running_style_flags', 4);
+  const styleCondition = buildBitFlagCondition(options.runningStyles, 'running_style_flags', 4, options.runningStyleUnrestricted);
   if (styleCondition) conditions.push(styleCondition);
 
-  const distCondition = buildBitFlagCondition(options.distances, 'distance_flags', 4);
+  const distCondition = buildBitFlagCondition(options.distances, 'distance_flags', 4, options.distanceUnrestricted);
   if (distCondition) conditions.push(distCondition);
 
-  const groundCondition = buildBitFlagCondition(options.grounds, 'ground_flags', 2);
+  const groundCondition = buildBitFlagCondition(options.grounds, 'ground_flags', 2, options.groundUnrestricted);
   if (groundCondition) conditions.push(groundCondition);
 
-  const phaseCondition = buildBitFlagCondition(options.phases, 'phase_flags', 3);
+  const phaseCondition = buildBitFlagCondition(options.phases, 'phase_flags', 3, options.phaseUnrestricted);
   if (phaseCondition) conditions.push(phaseCondition);
 
   const effectCondition = buildEffectTypesCondition(options.effectTypes);
@@ -293,12 +293,20 @@ function buildTypeCondition(subTypes) {
  * ビットフラグ条件を生成（統一ロジック）
  * 全チェック ON = 全チェック OFF → 条件なし（全スキル対象）
  * 一部チェック → チェックされたビット位置が 1 のスキルを OR 検索
+ * 制限なし選択時 → 全ビット ON のスキルのみを検索
  * @param {Array<string>} values - 選択された値の配列
  * @param {string} flagColumn - フラグカラム名
  * @param {number} flagLength - フラグの桁数
+ * @param {boolean} unrestricted - 「制限なし」が選択されているか
  * @returns {string|null} SQL 条件
  */
-function buildBitFlagCondition(values, flagColumn, flagLength) {
+function buildBitFlagCondition(values, flagColumn, flagLength, unrestricted = false) {
+  // 「制限なし」選択時 → 全ビット ON のスキルのみを検索
+  if (unrestricted) {
+    const allOnes = '1'.repeat(flagLength);
+    return `sev.${flagColumn} = '${allOnes}'`;
+  }
+
   // 値のインデックスマッピング
   const indexMaps = {
     running_style_flags: { nige: 1, senkou: 2, sashi: 3, oikomi: 4 },
