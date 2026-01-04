@@ -51,3 +51,11 @@ OpenSpec の proposal/apply/archive を実行する際は、CLI コマンド（`
 | アーカイブ | `/openspec:archive` |
 
 **理由**: スラッシュコマンドには CLI コマンドだけでは実行されない追加手順（index.md 更新、Related Changes 追加など）が含まれている。CLI コマンドのみでは手順が不完全になる。
+
+### proposal 作成時の命名規則確認
+
+proposal を作成する際は、**必ず `openspec/project.md` の命名規則を先に確認**すること。
+
+- **参照すべき情報源**: `openspec/project.md` > 既存の実績（アーカイブ済み proposal）
+- **理由**: アーカイブ済み proposal には日付接頭辞（`YYYY-MM-DD-`）が付いているが、これはアーカイブ時に付与されるもの。作成時の命名規則とは異なる。
+- **典型的な形式**: `{PROJECT_KEY}-{TASK_ID}-{descriptive-name}`（例: `USM-013-add-feature`）
