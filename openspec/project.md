@@ -8,18 +8,13 @@ proposal と spec の両方にチケット番号を付与し、課題管理シ�
 
 ### Change ID (Proposal ID)
 
-- **形式**: `{PROJECT_KEY}-{TASK_ID}{separator}{descriptive-name}`
+- **形式**: `{PROJECT_KEY}-{TASK_ID}_{descriptive-name}`
 - **例**:
   - ハイフン区切り: `ABC-005-add-user-authentication`
   - アンダースコア区切り: `ABC-005_add-user-authentication`
 - **PROJECT_KEY**: プロジェクト識別子（プロジェクトごとに定義、リポジトリルートの README.md に記載）
 - **TASK_ID**: タスク番号（桁数はプロジェクトごとに定義、例: 005 や 1443）
-- **separator**: 区切り文字（`-` または `_`、プロジェクトごとに選択）
 - **descriptive-name**: kebab-case の説明的な名前（動詞で始めることを推奨: `add-`, `fix-`, `update-`, `remove-` など）
-
-**区切り文字の選択:**
-- **ハイフン（`-`）**: 一般的で読みやすい（例: `ABC-005-add-user-authentication`）
-- **アンダースコア（`_`）**: 課題キー部分と説明部分を視覚的に分離（例: `ABC-005_add-user-authentication`）
 
 この命名により、以下が実現される：
 - Proposal ID として `{PROJECT_KEY}-{TASK_ID}` 部分が識別子として機能
@@ -29,7 +24,7 @@ proposal と spec の両方にチケット番号を付与し、課題管理シ�
 
 ### Spec Directory Name
 
-Spec ディレクトリ名は**課題キーを含めず**、機能を表す kebab-case で命名します：
+Spec ディレクトリ名は **課題キーを含めず** 、機能を表す kebab-case で命名します：
 
 - **形式**: `{verb}-{noun}` または `{feature-name}`
 - **例**: `user-authentication`, `scholarship-application`, `mail-template-system`
@@ -38,9 +33,9 @@ Spec ディレクトリ名は**課題キーを含めず**、機能を表す keba
   - 複数の proposal から同じ spec を更新可能
   - 時間経過で課題番号の意味が薄れない
 
-**構造例（ハイフン区切り）:**
+**構造例:**
 ```
-openspec/changes/ABC-005-add-user-authentication/  ← proposal
+openspec/changes/ABC-005_add-user-authentication/  ← proposal
 ├── proposal.md
 ├── tasks.md
 └── specs/
@@ -52,7 +47,7 @@ openspec/changes/ABC-005-add-user-authentication/  ← proposal
         └── spec.md
 ```
 
-**構造例（アンダースコア区切り、参考資料含む）:**
+**構造例（参考資料含む）:**
 ```
 openspec/changes/ABC-005_add-user-authentication/  ← proposal
 ├── proposal.md
@@ -145,7 +140,7 @@ proposal.md に References セクションを追加し、これらの資料へ�
 
 ```bash
 # 例: ABC-005_add-feature の場合
-mkdir -p openspec/changes/ABC-005_add-feature/specs/ABC-006_feature-spec
+mkdir -p openspec/changes/ABC-005_add-feature/specs/feature-spec
 ```
 
 #### 4. proposal.md の作成
@@ -226,7 +221,7 @@ openspec validate {change-id} --strict
 #### 8. 命名規則の確認
 
 以下を確認する：
-- change-id が `{PROJECT_KEY}-{TASK_ID}{separator}{descriptive-name}` 形式か
+- change-id が `{PROJECT_KEY}-{TASK_ID}_{descriptive-name}` 形式か
 - PROJECT_KEY が大文字か
 - 区切り文字がプロジェクトの規約に合致しているか
 
